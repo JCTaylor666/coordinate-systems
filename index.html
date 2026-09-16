@@ -1347,35 +1347,56 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
 
 <section class="ch" id="ch6">
 <div class="ch-head"><span class="ch-num">第 6 章</span><h2>相机外参：c2w 与 w2c</h2><details class="chk" data-ch="6"><summary>自检…</summary></details></div>
-<p>X 光源、相机，本质上都是"空间里的一个局部坐标系"：原点在源（或相机中心），三根轴是它自己的 右 / 下 / 视线方向。描述它的 4×4 有两个方向：</p>
+
+<h3>先说清楚：世界坐标原点在哪</h3>
+<p>从这一章开始，所有东西都放进同一个<b>世界坐标系</b>，就是第 5 章 canonicalize 之后的那个（体积的 affine 第 4 列被改成让中心落在原点）：<b>原点 = 体积（头）的中心</b>，x 向病人右、y 向前、z 向上，单位 mm。下面 3D 图里的"头"就摆在原点，三个小球标出方向：<span class="legend-dot" style="background:#7048e8"></span>R 在 +x、<span class="legend-dot" style="background:#f08c00"></span>A 在 +y、<span class="legend-dot" style="background:#0c8599"></span>S 在 +z。<b>头在世界里一直不动，动的只有相机。</b></p>
+
+<h3>为什么相机还要一套自己的坐标</h3>
+<p>拍片时关心的不是"点在世界里的哪儿"，而是<b>站在相机（X 光源）那里看</b>：这个点偏右还是偏左、偏下还是偏上、离我多远。这三个数，就是点在<b>相机坐标系</b>里的坐标。相机坐标系是一个跟着相机走的局部坐标系，和第 1 章里拖来拖去的局部坐标系是同一回事：</p>
 <ul class="tight">
-<li><b>c2w</b>（camera-to-world）：相机坐标 → 世界坐标。和第 1 章的 [R, t] 完全一样：<b>前三列 = 相机三根轴在世界里的方向，第 4 列 = 相机在世界里的位置</b>。</li>
-<li><b>w2c</b>（world-to-camera）= c2w 的逆 = [Rᵀ, −Rᵀ·C]。渲染时真正要用的是它：把世界里的点换到相机坐标，才能做投影。</li>
+<li><b>原点</b>：相机（源）所在的位置，记作 C。</li>
+<li><b class="z">z_c</b>：沿视线朝前。一个点的 z_c 就是它离相机多远（深度）。</li>
+<li><b class="x">x_c</b> 指向图像的右方，<b class="y">y_c</b> 指向图像的下方（和像素行号往下增加一致，第 7 章会用到）。</li>
 </ul>
-<p>这一章用的相机约定是 OpenCV / 3DGS / R2-Gaussian 那一套：<b class="x">x_c 朝图像右</b>，<b class="y">y_c 朝图像下</b>，<b class="z">z_c 沿视线朝前</b>。模拟的"头"在世界原点，带三个小球：<span class="legend-dot" style="background:#7048e8"></span>R 在 +x（病人右）、<span class="legend-dot" style="background:#f08c00"></span>A 在 +y（前）、<span class="legend-dot" style="background:#0c8599"></span>S 在 +z（上）。</p>
+<p class="hint">这是 OpenCV / 3DGS / R2-Gaussian 的约定。别的库可能让 y 朝上、z 朝后，道理一样，只是符号不同。</p>
+
+<h3>c2w：相机坐标 → 世界坐标</h3>
+<p>把前面几章串起来：第 1 章说局部坐标 → 世界坐标是 p = R·p′ + t；第 2 章说 R 的每一列就是一根局部轴在世界里的方向；第 3 章说补一个 1 就能把 R 和 t 拼成一个 4×4。相机就是一个局部坐标系，所以它的 4×4 长这样，名字叫 <b>c2w</b>（camera-to-world）：</p>
+<div class="eq">c2w = [ x_c   y_c   z_c  |  C ]
+前三列 x_c、y_c、z_c：相机三根轴在世界里的方向（第 2 章：R 的列就是新坐标轴）
+第 4 列 C：相机在世界里的位置（第 1 章的 t）；最下面补一行 0 0 0 1（第 3 章：补一个 1）</div>
+<p><b>手算一个例子。</b>相机放在 C = (500, 0, 0)，看向原点。视线朝 −x，所以 z_c = (−1, 0, 0)；图像右方 x_c = (0, 1, 0)；图像下方 y_c = (0, 0, −1)。相机正前方 300 mm 的点，相机坐标是 (0, 0, 300)，换到世界：C + 300 × z_c = (500, 0, 0) + (−300, 0, 0) = <b>(200, 0, 0)</b>，正好落在相机和原点之间。</p>
+
+<h3>w2c：世界坐标 → 相机坐标（投影真正要用的方向）</h3>
+<p>拍片时方向反过来：已知世界里的点，要算它在相机坐标里是多少。所以要 c2w 的逆，叫 <b>w2c</b> = [Rᵀ, −Rᵀ·C]（第 3 章 ④ 的逆矩阵）。它做的事很直观：<b>先减去相机位置，再分别点乘相机的三根轴</b>。</p>
+<p>接着上面的例子：小球 R 在世界 (52, 0, 8)。p − C = (−448, 0, 8)；x_c = (0, 1, 0)·(−448, 0, 8) = 0；y_c = (0, 0, −1)·(−448, 0, 8) = −8；z_c = (−1, 0, 0)·(−448, 0, 8) = 448。意思是：R 在相机<b>正前方 448 mm</b>，水平居中，比画面中心<b>高 8 mm</b>（y_c 为负就是向上）。</p>
+<p>下面可以拖动相机。左边 3D 是<b>世界里</b>的样子；右边小图是<b>相机坐标系里</b>的样子（x_c 向右、y_c 向下，只画位置，还没做透视）。点"相机放到 (500, 0, 0)"就是上面手算的例子。</p>
 <div class="widget">
-  <div class="stage"><div id="c6-view"></div><div class="stage-foot">黑球 = 相机（源）位置；浅色箭头 = 相机自己的三根轴；灰色框 = 成像平面；黄色小球 = 右边正在换算的那个点。</div></div>
+  <div class="stage"><div id="c6-view"></div><div class="stage-foot">黑球 = 相机（源）位置；浅色箭头 = 相机自己的三根轴；灰色框 = 成像平面；黄色小球 = 右边正在换算的那个点。原点处的头就是世界原点。</div></div>
   <div class="panel" id="c6-panel"></div>
 </div>
 <div class="key"><b>要点</b><ul class="tight">
-<li>想知道相机<b>在哪</b>、<b>朝哪看</b>：看 c2w 的第 4 列和第 3 列，一眼就读出来。w2c 的第 4 列 −Rᵀ·C 不是相机位置，直接当位置用是常见 bug。</li>
-<li>w2c 做的事就是"<b>先减掉相机位置，再分别点乘相机的三根轴</b>"：x_c = x轴·(p − C)，y_c = y轴·(p − C)，z_c = 视线·(p − C)。z_c 就是沿视线的深度。</li>
-<li>相机绕着头转，头在世界里一动不动。所有"换视角"都只改 c2w。</li>
+<li>世界原点 = 头（体积）的中心，头不动；相机坐标原点 = 相机自己，跟着相机走。</li>
+<li>想知道相机<b>在哪</b>、<b>朝哪看</b>：看 c2w 的第 4 列和第 3 列。w2c 的第 4 列 −Rᵀ·C <b>不是</b>相机位置，直接当位置用是常见 bug。</li>
+<li>w2c = "先减相机位置，再点乘三根相机轴"。z_c 是深度，第 7 章的透视就是拿 x_c、y_c 除以它。</li>
 </ul></div>
 <div id="c6-quiz"></div>
 </section>
 <script>
 (function () {
   const panel = document.getElementById('c6-panel'), host = document.getElementById('c6-view');
-  const st = { az: -60, el: 20, d: 600, pt: 'R', custom: [40, -30, 60], hover: -1 };
+  const st = { az: -60, el: 20, d: 600, pt: 'R', custom: [40, -30, 60] };
   const pos = () => st.pt === 'custom' ? st.custom : K.MARKERS.find(m => m.name === st.pt).c;
   const c2wNow = () => K.lookAtCV(K.orbitPos(K.rad(st.az), K.rad(st.el), st.d));
 
-  K.slider(panel, { label: '方位角', min: -180, max: 180, value: st.az, unit: '°', oninput: x => { st.az = x; update(); } });
-  K.slider(panel, { label: '仰角', min: -70, max: 70, value: st.el, unit: '°', oninput: x => { st.el = x; update(); } });
-  K.slider(panel, { label: '到原点距离', min: 250, max: 900, value: st.d, unit: ' mm', oninput: x => { st.d = x; update(); } });
+  const sAz = K.slider(panel, { label: '方位角', min: -180, max: 180, value: st.az, unit: '°', oninput: x => { st.az = x; update(); } });
+  const sEl = K.slider(panel, { label: '仰角', min: -70, max: 70, value: st.el, unit: '°', oninput: x => { st.el = x; update(); } });
+  const sD = K.slider(panel, { label: '到原点距离', min: 250, max: 900, value: st.d, unit: ' mm', oninput: x => { st.d = x; update(); } });
+  K.button(panel, '相机放到 (500, 0, 0)（手算的例子）', () => { st.az = 0; st.el = 0; st.d = 500; sAz.set(0, false); sEl.set(0, false); sD.set(500, false); st.pt = 'R'; sPt.set('R', false); update(); });
   const sPt = K.seg(panel, { label: '换算哪个点', value: 'R', options: [{ value: 'R', label: '小球 R' }, { value: 'A', label: '小球 A' }, { value: 'S', label: '小球 S' }, { value: 'custom', label: '自己拖' }], onchange: p => { st.pt = p; update(); } });
   ['x', 'y', 'z'].forEach((a, i) => K.slider(panel, { label: `自己拖的点 ${a}`, min: -100, max: 100, value: st.custom[i], unit: ' mm', oninput: x => { st.custom[i] = x; if (st.pt !== 'custom') sPt.set('custom', false); st.pt = 'custom'; update(); } }));
+  panel.append(K.h('h4', {}, '相机坐标系里的样子（x_c 向右、y_c 向下）'));
+  const inset = K.s('svg', { viewBox: '0 0 260 230', class: 'plane', style: 'max-width:300px;background:#fcfcfb;border:1px solid var(--line);border-radius:8px' }, panel);
   const read = K.h('div'); panel.append(read);
 
   let v = null, camFr, srcBall, frus, plane, ptBall, ray, camLab;
@@ -1384,9 +1405,10 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
     if (!v) return;
     K.worldAxes(v, 140, { r: 2.2 });
     K.addPhantom(v);
+    v.label('world origin', [0, 0, -105], 'soft');
     camFr = K.frame(v, 95, { soft: true, names: ['x_c', 'y_c', 'z_c'], r: 2.6 });
     srcBall = K.ball(v, [0, 0, 0], 9, 0x222222);
-    camLab = v.label('camera', [0, 0, 0], 'soft');
+    camLab = v.label('camera C', [0, 0, 0], 'soft');
     frus = [0, 1, 2, 3].map(() => K.line(v, [[0, 0, 0], [0, 0, 1]], 0x868e96, { opacity: 0.8 }));
     plane = K.quad(v, 0xadb5bd, { opacity: 0.25, edge: 0x868e96 });
     ptBall = K.ball(v, [0, 0, 0], 6, 0xfab005);
@@ -1400,6 +1422,26 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
     v.req();
   });
 
+  function drawInset(W2C, p) {
+    inset.replaceChildren();
+    const S = 115, cx = 130, cy = 118, half = 170, map = q => [cx + q[0] / half * S, cy + q[1] / half * S];
+    K.s('rect', { x: cx - S, y: cy - S, width: 2 * S, height: 2 * S, fill: 'none', stroke: '#e9ecef' }, inset);
+    K.arrow2(inset, [cx, cy], [cx + S - 4, cy], K.css.x, { w: 1.6, head: 7 }); K.text2(inset, cx + S - 6, cy - 6, 'x_c', { color: K.css.x, anchor: 'end', size: 11 });
+    K.arrow2(inset, [cx, cy], [cx, cy + S - 4], K.css.y, { w: 1.6, head: 7 }); K.text2(inset, cx + 6, cy + S - 8, 'y_c', { color: K.css.y, size: 11 });
+    const o = K.hom(W2C, [0, 0, 0]), oc = map(o);
+    K.s('circle', { cx: oc[0], cy: oc[1], r: 90 / half * S, fill: 'rgba(154,152,144,0.08)', stroke: '#adb5bd', 'stroke-dasharray': '3 3' }, inset);
+    K.s('path', { d: `M${oc[0] - 4},${oc[1]} L${oc[0] + 4},${oc[1]} M${oc[0]},${oc[1] - 4} L${oc[0]},${oc[1] + 4}`, stroke: '#495057', 'stroke-width': 1.5 }, inset);
+    K.text2(inset, oc[0] + 5, oc[1] + 13, `origin z=${K.fmt(o[2], 0)}`, { color: '#495057', size: 10 });
+    K.MARKERS.forEach(m => {
+      const q = K.hom(W2C, m.c), s = map(q), col = '#' + m.color.toString(16).padStart(6, '0');
+      K.s('circle', { cx: s[0], cy: s[1], r: Math.max(3, m.r / half * S), fill: q[2] > 0 ? col : 'none', stroke: col, 'stroke-width': 1.5, opacity: 0.9 }, inset);
+      K.text2(inset, s[0] + 7, s[1] - 5, `${m.name} z=${K.fmt(q[2], 0)}`, { color: col, size: 10 });
+    });
+    const q = K.hom(W2C, p), s = map(q);
+    K.s('circle', { cx: s[0], cy: s[1], r: 7, fill: 'none', stroke: '#fab005', 'stroke-width': 2.5 }, inset);
+    K.text2(inset, 6, 14, 'camera view, not projected yet', { color: K.css.muted, size: 10 });
+  }
+
   function update() {
     const M = c2wNow(), Wc = K.inv(M), R = K.getR(M), C = K.getT(M), p = pos(), pc = K.hom(Wc, p), rel = K.sub(p, C);
     if (v) {
@@ -1411,11 +1453,12 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
       ptBall.position.set(...p); ray.userData.set([C, p]);
       v.req();
     }
+    drawInset(Wc, p);
     const pad = x => K.fmt(x, 2);
     read.innerHTML =
       `<div data-m="c2w">${K.matHTML(M, { name: 'c2w（相机 → 世界）', colClass: K.AXCLS4, digits: 2, dimRow: 4, foot: '列 1–3：相机 x/y/z 轴在世界里的方向　列 4：相机位置 C' })}</div>` +
       K.matHTML(Wc, { name: 'w2c = c2w⁻¹（世界 → 相机）', digits: 2, dimRow: 4, colClass: ['', '', '', 'ax-t'], foot: `前 3×3 = Rᵀ　列 4 = −Rᵀ·C = ${K.vec(K.getT(Wc), 1)}，<b>不是</b>相机位置` }) +
-      `<h4>把点 ${st.pt === 'custom' ? '' : st.pt + ' '}${K.vec(p, 0)} 换到相机坐标</h4><div class="eq">p − C = ${K.vec(rel, 1)}\n<span class="cx">x_c = ${K.vec(K.col(R, 0))} · (p − C) = ${pad(pc[0])}</span>　← 图像里偏右多少\n<span class="cy">y_c = ${K.vec(K.col(R, 1))} · (p − C) = ${pad(pc[1])}</span>　← 偏下多少\n<span class="cz">z_c = ${K.vec(K.col(R, 2))} · (p − C) = ${pad(pc[2])}</span>　← 深度（>0 在相机前方）</div>` +
+      `<h4>把点 ${st.pt === 'custom' ? '' : st.pt + ' '}${K.vec(p, 0)} 换到相机坐标</h4><div class="eq">p − C = ${K.vec(rel, 1)}　← 先减去相机位置\n<span class="cx">x_c = ${K.vec(K.col(R, 0))} · (p − C) = ${pad(pc[0])}</span>　← 偏右多少\n<span class="cy">y_c = ${K.vec(K.col(R, 1))} · (p − C) = ${pad(pc[1])}</span>　← 偏下多少（负 = 偏上）\n<span class="cz">z_c = ${K.vec(K.col(R, 2))} · (p − C) = ${pad(pc[2])}</span>　← 深度（> 0 在相机前方）</div>` +
       `<div class="read">和 w2c·[p, 1] 的结果 ${K.vec(pc)} 完全一样：矩阵乘法就是这三次点乘。</div>`;
   }
   update();
@@ -1423,7 +1466,16 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
   K.quiz(document.getElementById('c6-quiz'), {
     q: 'c2w = [[0, 0, −1, 500], [1, 0, 0, 0], [0, −1, 0, 0], [0, 0, 0, 1]]。相机在哪、朝哪看？',
     options: ['在 (500, 0, 0)，朝 −x 看', '在 (0, 0, 0)，朝 +x 看', '在 (500, 0, 0)，朝 +z 看', '在 (−500, 0, 0)，朝 +x 看'], answer: 0,
-    explain: '第 4 列 (500, 0, 0) 是位置；第 3 列 (−1, 0, 0) 是视线方向 z_c，所以朝 −x 看，正对原点。这正是 R2-Gaussian 的 angle2pose 在角度 0、DSO = 500 时给出的矩阵（第 10 章）。'
+    explain: '第 4 列 (500, 0, 0) 是位置；第 3 列 (−1, 0, 0) 是视线方向 z_c，所以朝 −x 看，正对原点。它就是上面手算的那台相机，也正是 R2-Gaussian 的 angle2pose 在角度 0、DSO = 500 时给出的矩阵（第 10 章）。'
+  });
+  K.quiz(document.getElementById('c6-quiz'), {
+    q: '一个点的相机坐标是 (0, 0, 300)。它在哪？',
+    options: ['在世界原点', '在相机正前方 300 mm', '在相机正上方 300 mm'], answer: 1,
+    explain: 'x_c = y_c = 0 表示正对视线，z_c = 300 表示沿视线往前 300 mm。换到世界要用 c2w：C + 300 × z_c。'
+  });
+  K.addCheck(6, '手算例子：相机在 (500, 0, 0) 看原点，(0, 0, 300) → 世界 (200, 0, 0)；小球 R → 相机 (0, −8, 448)', () => {
+    const M = K.lookAtCV([500, 0, 0]);
+    return K.maxDiff(K.hom(M, [0, 0, 300]), [200, 0, 0]) < 1e-9 && K.maxDiff(K.hom(K.inv(M), [52, 0, 8]), [0, -8, 448]) < 1e-9;
   });
   K.addCheck(6, 'c2w · w2c = I（随机 50 个视角）', () => {
     let m = 0;
