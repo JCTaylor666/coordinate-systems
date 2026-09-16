@@ -7,3 +7,4 @@
 - 单个 `index.html`，没有构建步骤；本地直接用浏览器打开即可。
 - 3D 部分从 jsDelivr 加载 three.js r128，需要联网；文字、矩阵数字和 2D 图离线也能用。
 - 模拟的"头"和所有数值都是示意，不是真实数据。
+- 访问统计用 GoatCounter（不用 cookie，只记页面加载和来源），看板：https://jctaylor666.goatcounter.com 。本地打开 `index.html` 时不计数。
