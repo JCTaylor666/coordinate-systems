@@ -135,7 +135,7 @@ table.small tr.sel td{background:var(--hl)} table.small tbody tr{cursor:pointer}
 <ol class="toc">
   <li><a href="#ch1">坐标系是什么</a><span class="st" data-ch="1"></span></li>
   <li><a href="#ch2">旋转矩阵：列就是新的坐标轴</a><span class="st" data-ch="2"></span></li>
-  <li><a href="#ch3">齐次坐标与 4×4：顺序、逆</a><span class="st" data-ch="3"></span></li>
+  <li><a href="#ch3">齐次坐标与 4×4：补一个 1、顺序、逆</a><span class="st" data-ch="3"></span></li>
   <li><a href="#ch4">欧拉角：顺序决定结果</a><span class="st" data-ch="4"></span></li>
   <li><a href="#ch5">体素下标 ↔ 世界坐标</a><span class="st" data-ch="5"></span></li>
   <li><a href="#ch6">相机外参：c2w 与 w2c</a><span class="st" data-ch="6"></span></li>
@@ -818,65 +818,95 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
 </script>
 
 <section class="ch" id="ch3">
-<div class="ch-head"><span class="ch-num">第 3 章</span><h2>齐次坐标与 4×4：顺序、逆</h2><details class="chk" data-ch="3"><summary>自检…</summary></details></div>
-<p>p = R·p′ + t 有个麻烦：旋转是乘法，平移是加法，两个变换一串起来公式就乱。<b>齐次坐标</b>的办法是给点补一个 1：(x, y) 写成 (x, y, 1)，把 R 和 t 拼成一个大矩阵</p>
-<div class="eq">⎡R  t⎤ ⎡p′⎤   ⎡R·p′ + t⎤
-⎣0  1⎦ ⎣1 ⎦ = ⎣   1    ⎦</div>
-<p>那个 1 把平移"带"出来。这样<b>连续做几个变换 = 矩阵连乘</b>，求逆 = 求矩阵的逆。2D 用 3×3，3D 用 4×4，道理完全一样；为了看得清楚，这一章用 2D。</p>
+<div class="ch-head"><span class="ch-num">第 3 章</span><h2>齐次坐标与 4×4：补一个 1，就冒出了"顺序"</h2><details class="chk" data-ch="3"><summary>自检…</summary></details></div>
+<p>第 1 章的 p = R·p′ + t 里有两种运算：旋转是<b>乘</b>，平移是<b>加</b>。只做一次变换没问题；可一旦要连着做好几次（体素 → 世界 → 配准 → 相机……），乘法和加法交替出现，公式很快就乱了。这一章按顺序讲三件事：</p>
+<ol class="tight">
+<li><b>补一个 1</b>：把点 (x, y) 写成 (x, y, 1)，平移也就能写成矩阵，变成乘法。→ 下面 ①</li>
+<li><b>好处</b>：旋转、平移全是矩阵了，连着做几次 = 几个矩阵相乘，可以先乘成一个矩阵。</li>
+<li><b>代价</b>：矩阵乘法不能交换（A·B ≠ B·A）。"先做哪个"只体现在谁在左、谁在右，写反了照样能算、不报错。→ 下面 ②</li>
+</ol>
+<p>③④ 是由此而来的两个常见错误。2D 用 3×3，3D 用 4×4，道理完全一样；为了看得清楚，这一章用 2D。</p>
 <div class="tabs" id="c3-tabs"></div>
-<div class="tabbody"><div class="widget" style="margin:0">
-  <div class="stage"><div id="c3-stage"></div><div class="stage-foot" id="c3-foot"></div></div>
-  <div class="panel" id="c3-panel"></div>
-</div></div>
+<div class="tabbody">
+  <div id="c3-intro" style="margin:0 0 10px"></div>
+  <div class="widget" style="margin:0">
+    <div class="stage"><div id="c3-stage"></div><div class="stage-foot" id="c3-foot"></div></div>
+    <div class="panel" id="c3-panel"></div>
+  </div>
+</div>
 <div class="key"><b>要点</b><ul class="tight">
-<li><b>从右往左读</b>：p_final = B · A · p 表示先做 A 再做 B。换顺序通常结果不同。</li>
-<li>复合变换的平移列是 <b>R₂·t₁ + t₂</b>，不是 t₁ + t₂。只在 R₂ 是单位阵时两者碰巧一样，所以这个 bug 在"没转角度"的测试里根本发现不了。</li>
-<li>刚体变换的逆是 <b>[Rᵀ, −Rᵀ·t]</b>，不是 [Rᵀ, −t]。第 6 章 w2c 的第 4 列就是 −Rᵀ·t。</li>
+<li>补上 1 以后，平移矩阵第三列的 (tₓ, t_y) 乘的正是点的那个 1，结果里就多出 +tₓ、+t_y：<b>加法被写成了乘法</b>。</li>
+<li><b>从右往左读</b>：p′ = B·A·p 里 A 离 p 最近，先做 A。顺序不同，合起来矩阵的<b>平移列</b>就不同：B·A 的平移列还是 B 的 t；A·B 的平移列是 R·t（平移向量自己也被转了）。</li>
+<li>对到 C 臂：DiffDRR 的 E = [R | R·tra] 拆开就是 R·T(tra)，<b>先平移 tra，再旋转 R</b>，所以源在 R·tra 而不在 tra（第 9 章）。</li>
+<li>自己手写合成公式时，平移列是 R₂·t₁ + t₂，不是 t₁ + t₂（③）；刚体变换的逆是 [Rᵀ, −Rᵀ·t]，不是 [Rᵀ, −t]（④）。第 6 章 w2c 的第 4 列就是 −Rᵀ·t。</li>
 </ul></div>
 <div id="c3-quiz"></div>
 </section>
 <script>
 (function () {
   const pl = K.plane(document.getElementById('c3-stage'), { W: 600, H: 450, xr: [-5, 7], yr: [-4, 5] });
-  const { X, Y, P } = pl, panel = document.getElementById('c3-panel'), foot = document.getElementById('c3-foot');
-  const gAx = pl.layer(), gD = pl.layer();
+  const { X, Y, P } = pl, panel = document.getElementById('c3-panel'), foot = document.getElementById('c3-foot'), intro = document.getElementById('c3-intro');
+  const gAx = pl.layer(), gD = pl.layer(), gH = pl.layer();
   K.arrow2(gAx, P([-5, 0]), P([6.85, 0]), '#c9c8c2', { w: 1.4 }); K.arrow2(gAx, P([0, -4]), P([0, 4.85]), '#c9c8c2', { w: 1.4 });
   K.text2(gAx, X(6.7), Y(0) + 16, 'x', { color: K.css.x, bold: 1, anchor: 'end' }); K.text2(gAx, X(0) + 8, Y(4.6), 'y', { color: K.css.y, bold: 1 });
   const H = (a, t) => K.Rt(K.R2(K.rad(a)), t);
   const Hm = (R, t) => K.Rt(R, t);
+  const I3 = K.I(3);
   const drawF = (M, o) => {
     const pts = K.F2.map(q => P(K.hom(M, q)).join(','));
     K.s('path', { d: 'M' + pts.join(' L') + ' Z', fill: o.fill || 'none', stroke: o.stroke, 'stroke-width': o.w || 1.6, 'stroke-dasharray': o.dash || '', opacity: o.op || 1 }, gD);
-    const c = P(K.hom(M, [0, 0]));
-    K.s('circle', { cx: c[0], cy: c[1], r: 4, fill: o.stroke, opacity: o.op || 1 }, gD);
-    if (o.label) K.text2(gD, c[0] + 7, c[1] + 16, o.label, { color: o.stroke, bold: 1 });
-    return K.hom(M, [0, 0]);
+    const org = K.hom(M, [0, 0]);
+    if (o.marker !== false) { const c = P(org); K.s('circle', { cx: c[0], cy: c[1], r: 4, fill: o.stroke, opacity: o.op || 1 }, gD); }
+    if (o.label) { const c = P(K.hom(M, o.labelAt || [0, 0])); K.text2(gD, c[0] + 7, c[1] + 16, o.label, { color: o.stroke, bold: 1 }); }
+    return org;
   };
-  const via = (a, b, c) => { K.arrow2(gD, P(a), P(b), '#adb5bd', { w: 1.3, dash: '4 3', head: 7 }); if (c) K.arrow2(gD, P(b), P(c), '#868e96', { w: 1.3, dash: '4 3', head: 7 }); };
+  const dot = (p, color, label, o) => { o = o || {}; const c = P(p); K.s('circle', { cx: c[0], cy: c[1], r: o.r || 5, fill: color, stroke: '#fff', 'stroke-width': 1.5 }, gD); if (label) K.text2(gD, c[0] + (o.dx == null ? 8 : o.dx), c[1] + (o.dy == null ? -8 : o.dy), label, { color, bold: 1 }); };
+  const via = (pts, color) => { for (let i = 0; i + 1 < pts.length; i++) K.arrow2(gD, P(pts[i]), P(pts[i + 1]), color || '#868e96', { w: 1.4, dash: '4 3', head: 8 }); };
   const M3 = (M, name, foot) => K.matHTML(M, { name, digits: 2, colClass: ['', '', 'ax-t'], dimRow: 3, foot });
+  const f = (v, n) => K.fmt(v, 2).padStart(n || 5);
 
-  const st = { tab: 'order', a: 60, b: [3, 1], mode: 'BA', a1: 30, t1: [3, 0], a2: 50, t2: [0, 1], ai: 50, ti: [3, 1.5] };
+  const st = {
+    tab: 'homog',
+    h: { th: 0, t: [3, 1], p: [1, 0.5], dir: false },
+    o: { a: 90, b: [3, 1], mode: 'BA' },
+    a1: 30, t1: [3, 0], a2: 50, t2: [0, 1],
+    ai: 50, ti: [3, 1.5],
+  };
+  const hP = K.s('circle', { r: 8, fill: K.css.acc, stroke: '#fff', 'stroke-width': 2 }, gH);
+  pl.drag(hP, w => { st.h.p = [K.clamp(+w[0].toFixed(1), -4.5, 6.5), K.clamp(+w[1].toFixed(1), -3.5, 4.5)]; draw(); });
+
   const tabs = document.getElementById('c3-tabs');
-  const tabDefs = [['order', '① 顺序'], ['bug', '② 平移直接相加的 bug'], ['inv', '③ 逆矩阵']];
+  const tabDefs = [['homog', '① 补一个 1'], ['order', '② 顺序'], ['bug', '③ 平移直接相加的 bug'], ['inv', '④ 逆矩阵']];
   const tabBtns = tabDefs.map(([k, l]) => { const b = K.h('button', { type: 'button' }, l); b.onclick = () => { st.tab = k; build(); }; tabs.append(b); return [k, b]; });
   const read = K.h('div');
 
   function build() {
     tabBtns.forEach(([k, b]) => b.classList.toggle('on', k === st.tab));
     panel.replaceChildren();
-    if (st.tab === 'order') {
-      K.seg(panel, { label: '顺序', value: st.mode, options: [{ value: 'BA', label: '先 A 后 B　→ B·A' }, { value: 'AB', label: '先 B 后 A　→ A·B' }], onchange: m => { st.mode = m; draw(); } });
-      K.slider(panel, { label: 'A：绕原点转', min: -180, max: 180, value: st.a, unit: '°', oninput: x => { st.a = x; draw(); } });
-      K.slider(panel, { label: 'B：平移 x', min: -4, max: 5, step: 0.1, value: st.b[0], digits: 1, oninput: x => { st.b = [x, st.b[1]]; draw(); } });
-      K.slider(panel, { label: 'B：平移 y', min: -3, max: 4, step: 0.1, value: st.b[1], digits: 1, oninput: x => { st.b = [st.b[0], x]; draw(); } });
-      foot.textContent = '灰色虚线 = 原始 F；浅色 = 做完第一步；蓝色 = 做完两步。小圆点是 F 自己的原点，灰色箭头是它走过的路。';
+    hP.setAttribute('display', st.tab === 'homog' ? '' : 'none');
+    if (st.tab === 'homog') {
+      intro.innerHTML = '先手算一次。把点 p 写成 (x, y, 1)，看矩阵第三列的 tₓ、t_y 是怎么乘到那个 1 上的。<b>拖橙色点</b>换一个点，拖滑块改平移和旋转。';
+      K.slider(panel, { label: '平移 tₓ', min: -4, max: 5, step: 0.1, value: st.h.t[0], digits: 1, oninput: x => { st.h.t = [x, st.h.t[1]]; draw(); } });
+      K.slider(panel, { label: '平移 t_y', min: -3, max: 4, step: 0.1, value: st.h.t[1], digits: 1, oninput: x => { st.h.t = [st.h.t[0], x]; draw(); } });
+      K.slider(panel, { label: '旋转 θ', min: -180, max: 180, value: st.h.th, unit: '°', oninput: x => { st.h.th = x; draw(); } });
+      K.toggle(panel, { label: '把点的最后一位写成 0（表示方向，而不是点）', value: st.h.dir, onchange: b => { st.h.dir = b; draw(); } });
+      foot.textContent = '橙色 = 原来的点 p（可拖）；蓝色 = 乘完矩阵以后的 p′。灰色虚线 F 是原位置，浅蓝 F 是乘完同一个矩阵的样子。';
+    } else if (st.tab === 'order') {
+      intro.innerHTML = '现在旋转和平移都是矩阵了，连着做两次就是两个矩阵相乘。可矩阵乘法<b>不能交换</b>：同一个"转 A"、同一个"移 B"，换个先后，结果就不一样。蓝色和红色两个 F 同时画出来，一眼能看到差别。';
+      K.seg(panel, { label: '看哪个顺序的中间过程', value: st.o.mode, options: [{ value: 'BA', label: '先 A 后 B　→ B·A' }, { value: 'AB', label: '先 B 后 A　→ A·B' }], onchange: m => { st.o.mode = m; draw(); } });
+      K.slider(panel, { label: 'A：绕原点转', min: -180, max: 180, value: st.o.a, unit: '°', oninput: x => { st.o.a = x; draw(); } });
+      K.slider(panel, { label: 'B：平移 x', min: -4, max: 5, step: 0.1, value: st.o.b[0], digits: 1, oninput: x => { st.o.b = [x, st.o.b[1]]; draw(); } });
+      K.slider(panel, { label: 'B：平移 y', min: -3, max: 4, step: 0.1, value: st.o.b[1], digits: 1, oninput: x => { st.o.b = [st.o.b[0], x]; draw(); } });
+      foot.textContent = '灰色虚线 = 原始 F；蓝色 = B·A（先转后移）；红色虚线 = A·B（先移后转）；浅蓝细虚线 = 选中顺序做完第一步。橙点 p = (1, 0)，箭头是它走过的路。';
     } else if (st.tab === 'bug') {
+      intro.innerHTML = '顺序带来的第一个常见错误：不用齐次矩阵、自己手写"两个刚体变换合成一个"的公式时，把两个平移直接相加。';
       K.slider(panel, { label: 'T₁ 旋转', min: -180, max: 180, value: st.a1, unit: '°', oninput: x => { st.a1 = x; draw(); } });
       K.slider(panel, { label: 'T₁ 平移 x', min: -4, max: 5, step: 0.1, value: st.t1[0], digits: 1, oninput: x => { st.t1 = [x, 0]; draw(); } });
       K.slider(panel, { label: 'T₂ 旋转', min: -180, max: 180, value: st.a2, unit: '°', oninput: x => { st.a2 = x; draw(); } });
       K.button(panel, '把 T₂ 旋转拖到 0°', () => { st.a2 = 0; build(); });
       foot.textContent = '蓝色 = 正确的 T₂·T₁；红色虚线 = 把平移直接相加的错误版本。T₂ 旋转为 0° 时两者重合，bug 完全看不出来。';
     } else {
+      intro.innerHTML = '第二个常见错误：求逆。逆变换要先把平移减掉、再转回去，所以平移列是 −Rᵀ·t，而不是 −t。';
       K.slider(panel, { label: 'T 旋转', min: -180, max: 180, value: st.ai, unit: '°', oninput: x => { st.ai = x; draw(); } });
       K.slider(panel, { label: 'T 平移 x', min: -4, max: 5, step: 0.1, value: st.ti[0], digits: 1, oninput: x => { st.ti = [x, st.ti[1]]; draw(); } });
       K.slider(panel, { label: 'T 平移 y', min: -3, max: 4, step: 0.1, value: st.ti[1], digits: 1, oninput: x => { st.ti = [st.ti[0], x]; draw(); } });
@@ -888,19 +918,55 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
 
   function draw() {
     gD.replaceChildren();
-    const I3 = K.I(3);
-    if (st.tab === 'order') {
-      const A = H(st.a, [0, 0]), B = H(0, st.b);
-      const first = st.mode === 'BA' ? A : B, fin = st.mode === 'BA' ? K.mul(B, A) : K.mul(A, B);
-      const o0 = drawF(I3, { stroke: '#adb5bd', dash: '4 3' });
-      const o1 = drawF(first, { stroke: '#74c0fc', fill: 'rgba(116,192,252,0.12)', label: st.mode === 'BA' ? 'A·p' : 'B·p' });
-      const o2 = drawF(fin, { stroke: K.css.z, fill: 'rgba(28,126,214,0.2)', w: 2, label: st.mode === 'BA' ? 'B·A·p' : 'A·B·p' });
-      via(o0, o1, o2);
-      const tt = K.getT(fin);
-      read.innerHTML = M3(A, 'A（旋转）') + M3(B, 'B（平移）') + M3(fin, st.mode === 'BA' ? '合起来 B·A' : '合起来 A·B', '灰色是恒为 0 0 1 的最后一行') +
-        `<div class="eq">p_final = ${st.mode === 'BA' ? 'B · A' : 'A · B'} · p　（从右往左：先 ${st.mode === 'BA' ? 'A 后 B' : 'B 后 A'}）</div>` +
-        (st.mode === 'BA' ? `平移列 = ${K.vec(tt)} = B 的平移原样保留：<b>先转后移</b>，平移不受旋转影响。`
-          : `平移列 = ${K.vec(tt)} = R·b：<b>先移后转</b>，连平移向量 ${K.vec(st.b)} 也被转了 ${st.a}°。`);
+    if (st.tab === 'homog') {
+      const h = st.h, M = H(h.th, h.t), w = h.dir ? 0 : 1, c = Math.cos(K.rad(h.th)), s = Math.sin(K.rad(h.th)), [x, y] = h.p;
+      const q = K.mv(M, [x, y, w]);
+      drawF(I3, { stroke: '#adb5bd', dash: '4 3', marker: false });
+      drawF(M, { stroke: '#74c0fc', fill: 'rgba(116,192,252,0.12)', marker: false });
+      if (h.dir) {
+        K.arrow2(gD, P([0, 0]), P(h.p), K.css.acc, { w: 2.4 });
+        K.arrow2(gD, P([0, 0]), P([q[0], q[1]]), K.css.z, { w: 2.4 });
+        dot([q[0], q[1]], K.css.z, 'p′', { r: 3 });
+      } else {
+        via([h.p, [q[0], q[1]]]);
+        dot([q[0], q[1]], K.css.z, 'p′');
+      }
+      const pp = P(h.p); hP.setAttribute('cx', pp[0]); hP.setAttribute('cy', pp[1]);
+      K.text2(gD, pp[0] + 10, pp[1] + 18, 'p', { color: '#d9480f', bold: 1 });
+      const hl = t => `<span class="hl">${t}</span>`;
+      read.innerHTML =
+        `<h4>M · p，p 写成 (x, y, ${w})</h4><div class="eq">` +
+        `⎡${f(c)} ${f(-s)} ${hl(f(h.t[0]))}⎤ ⎡${f(x)}⎤   ⎡${f(c)}·${f(x)} + ${f(-s)}·${f(y)} + ${hl(f(h.t[0]) + '·' + w)}⎤   ⎡${f(q[0])}⎤\n` +
+        `⎢${f(s)} ${f(c)} ${hl(f(h.t[1]))}⎥ ⎢${f(y)}⎥ = ⎢${f(s)}·${f(x)} + ${f(c)}·${f(y)} + ${hl(f(h.t[1]) + '·' + w)}⎥ = ⎢${f(q[1])}⎥\n` +
+        `⎣${f(0)} ${f(0)} ${f(1)}⎦ ⎣${f(w, 5)}⎦   ⎣${f(0)}·${f(x)} + ${f(0)}·${f(y)} + ${f(1)}·${w}⎦   ⎣${f(q[2])}⎦</div>` +
+        (h.dir
+          ? `<div class="warn" style="margin:6px 0">最后一位是 <b>0</b>：高亮的两项乘出来都是 0，<b>平移完全不起作用</b>，只剩旋转。方向就该这样——第 6 章 c2w 的前三列是相机轴的<b>方向</b>，只会被转，不会被挪；第 4 列才是位置。</div>`
+          : `高亮的两项：第三列的 tₓ、t_y 乘的正是点的最后一位 <b>1</b>，结果里就多出 +${K.fmt(h.t[0], 1)}、+${K.fmt(h.t[1], 1)}。` +
+            (Math.abs(h.th) < 1e-9 ? `<br>现在 θ = 0，矩阵只剩平移：x′ = x + tₓ = ${K.fmt(x, 1)} + ${K.fmt(h.t[0], 1)}，y′ = y + t_y = ${K.fmt(y, 1)} + ${K.fmt(h.t[1], 1)}——<b>加法被写成了乘法</b>。` : `<br>θ ≠ 0 时，前两列负责旋转、第三列负责平移，一次乘法把 R·p + t 两步都做完了。`)) +
+        `<div class="hint" style="margin-top:6px">第三行永远是 0 0 1，所以结果最后一位保持不变（点还是 1），可以接着乘下一个矩阵。这就是"连着做几个变换 = 几个矩阵相乘"的前提。</div>`;
+    } else if (st.tab === 'order') {
+      const o = st.o, A = H(o.a, [0, 0]), B = H(0, o.b), BA = K.mul(B, A), AB = K.mul(A, B), p0 = [1, 0];
+      const first = o.mode === 'BA' ? A : B;
+      drawF(I3, { stroke: '#adb5bd', dash: '4 3', marker: false });
+      drawF(first, { stroke: '#74c0fc', dash: '2 3', w: 1.2, marker: false });
+      drawF(BA, { stroke: K.css.z, fill: 'rgba(28,126,214,0.18)', w: o.mode === 'BA' ? 2.4 : 1.4, marker: false, label: 'B·A', labelAt: [1.6, 2.4] });
+      drawF(AB, { stroke: K.css.x, dash: '6 4', w: o.mode === 'AB' ? 2.4 : 1.4, marker: false, label: 'A·B', labelAt: [1.6, 2.4] });
+      const pA = K.hom(A, p0), pB = K.hom(B, p0), pBA = K.hom(BA, p0), pAB = K.hom(AB, p0);
+      via(o.mode === 'BA' ? [p0, pA, pBA] : [p0, pB, pAB]);
+      dot(p0, K.css.acc, 'p');
+      dot(o.mode === 'BA' ? pA : pB, '#74c0fc', o.mode === 'BA' ? 'A·p' : 'B·p', { r: 4 });
+      dot(pBA, K.css.z, 'B·A·p'); dot(pAB, K.css.x, 'A·B·p', { dy: 18 });
+      const gap = K.norm(K.sub(pBA, pAB));
+      read.innerHTML = M3(A, `A：转 ${o.a}°`) + M3(B, `B：移 ${K.vec(o.b, 1)}`) +
+        M3(BA, 'B·A（先 A 后 B）', `平移列 ${K.vec(K.getT(BA), 2)} = B 的平移原样`) +
+        M3(AB, 'A·B（先 B 后 A）', `平移列 ${K.vec(K.getT(AB), 2)} = R·${K.vec(o.b, 1)}，被转了`) +
+        `<div class="eq">p_final = B · A · p　← 从右往左读：A 离 p 最近，先做 A</div>` +
+        `<div class="table-wrap"><table class="small"><thead><tr><th style="text-align:left">p = (1, 0)</th><th>第一步</th><th>第二步</th></tr></thead><tbody>` +
+        `<tr><td style="text-align:left;color:var(--z)">B·A 先转后移</td><td>转 → ${K.vec(pA)}</td><td>移 → <b>${K.vec(pBA)}</b></td></tr>` +
+        `<tr><td style="text-align:left;color:var(--x)">A·B 先移后转</td><td>移 → ${K.vec(pB)}</td><td>转 → <b>${K.vec(pAB)}</b></td></tr></tbody></table></div>` +
+        (gap < 1e-9
+          ? `<div class="warn" style="margin:6px 0">两种顺序结果<b>完全一样</b>：${K.norm(o.b) < 1e-9 ? 'B 现在是零平移（什么都没挪）' : 'A 现在是 0°（没有旋转）'}。只测这种情况，永远发现不了顺序写反——把 A 拖到 90°、B 拖离 (0, 0) 试试。</div>`
+          : `两个结果相差 <b style="color:var(--bad)">${K.fmt(gap, 2)}</b>。左上 2×2 两边一样（都是转 ${o.a}°），差别全在平移列。`);
     } else if (st.tab === 'bug') {
       const R1 = K.R2(K.rad(st.a1)), R2 = K.R2(K.rad(st.a2)), T1 = Hm(R1, st.t1), T2 = Hm(R2, st.t2);
       const good = K.mul(T2, T1), bad = Hm(K.mul(R2, R1), K.add(st.t1, st.t2));
@@ -908,11 +974,11 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
       const o1 = drawF(T1, { stroke: '#74c0fc', label: 'T₁·p' });
       const og = drawF(good, { stroke: K.css.z, fill: 'rgba(28,126,214,0.2)', w: 2, label: 'correct' });
       const ob = drawF(bad, { stroke: K.css.x, dash: '6 4', w: 2, label: 'wrong' });
-      via(o0, o1, og);
+      via([o0, o1, og]);
       const gap = K.norm(K.sub(og, ob));
       read.innerHTML = M3(good, '正确：T₂·T₁') + M3(bad, '错误：平移相加') +
         `<div class="eq">正确  t = R₂·t₁ + t₂ = ${K.vec(K.mv(R2, st.t1))} + ${K.vec(st.t2)} = ${K.vec(K.getT(good))}\n错误  t = t₁ + t₂    = ${K.vec(st.t1)} + ${K.vec(st.t2)} = ${K.vec(K.getT(bad))}</div>` +
-        `两者相差 <b style="color:${gap > 1e-9 ? 'var(--bad)' : 'var(--good)'}">${K.fmt(gap, 3)}</b> 个单位${gap < 1e-9 ? '——T₂ 没有旋转，bug 被藏住了' : ''}。在 mm 为单位的配准里，这就是"代码能跑、图也能出、只是整体偏了几十毫米"。`;
+        `两者相差 <b style="color:${gap > 1e-9 ? 'var(--bad)' : 'var(--good)'}">${K.fmt(gap, 3)}</b> 个单位${gap < 1e-9 ? '——T₂ 没有旋转，bug 被藏住了' : ''}。这正是 ② 里"平移列要被后面的旋转转一下"的那件事；在 mm 为单位的配准里，表现就是"代码能跑、图也能出、只是整体偏了几十毫米"。`;
     } else {
       const R = K.R2(K.rad(st.ai)), T = Hm(R, st.ti), Ti = Hm(K.T(R), K.scl(K.mv(K.T(R), st.ti), -1)), W = Hm(K.T(R), K.scl(st.ti, -1));
       drawF(I3, { stroke: K.css.z, fill: 'rgba(28,126,214,0.18)', w: 2, label: 'p' });
@@ -921,15 +987,37 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
       drawF(K.mul(W, T), { stroke: K.css.x, dash: '6 4', w: 1.8, label: 'wrong inverse' });
       read.innerHTML = M3(T, 'T') + M3(Ti, 'T⁻¹ = [Rᵀ, −Rᵀt]') + M3(K.mul(T, Ti), 'T·T⁻¹', '= 单位阵') +
         `<div class="eq">−Rᵀ·t = ${K.vec(K.getT(Ti))}\n错误的 −t = ${K.vec(K.scl(st.ti, -1))}</div>` +
-        `为什么是 −Rᵀt：逆变换要先把平移减掉、再转回去，即 Rᵀ(p − t) = Rᵀp − Rᵀt。`;
+        `为什么是 −Rᵀt：逆变换要先把平移减掉、再转回去，即 Rᵀ(p − t) = Rᵀp − Rᵀt。写成矩阵就是"先平移 −t，再转 Rᵀ"，顺序又一次决定了平移列。`;
     }
   }
   build();
 
-  K.quiz(document.getElementById('c3-quiz'), {
+  const qz = document.getElementById('c3-quiz');
+  K.quiz(qz, {
+    q: 'p_final = T₂ · T₁ · p。哪个变换先作用在 p 上？',
+    options: ['T₁', 'T₂', '同时作用，没有先后'], answer: 0,
+    explain: '从右往左读：T₁ 挨着 p，先算 T₁·p，再用 T₂ 乘这个结果。'
+  });
+  K.quiz(qz, {
     q: '先平移 (2, 0)，再绕原点转 90°。原点 (0, 0) 最后在哪？',
     options: ['(2, 0)', '(0, 2)', '(−2, 0)', '(2, 2)'], answer: 1,
-    explain: '先平移到 (2, 0)，再绕原点转 90° 到 (0, 2)。矩阵写成 A·B（B 平移在右边先做）。在 ① 里选"先 B 后 A"、转 90°、平移 (2, 0) 就能看到。'
+    explain: '先平移到 (2, 0)，再绕原点转 90° 到 (0, 2)。矩阵写成 A·B（平移 B 在右边，先做）。在 ② 里选"先 B 后 A"、A 转 90°、B 平移 (2, 0) 就能看到。'
+  });
+  K.addCheck(3, '齐次平移矩阵 · (x, y, 1) = (x + tₓ, y + t_y, 1)；最后一位为 0 时平移不起作用', () => {
+    const M = K.Rt(K.I(2), [3, 1]), a = K.mv(M, [1.5, -2, 1]), b = K.mv(M, [1.5, -2, 0]);
+    return K.maxDiff(a, [4.5, -1, 1]) < 1e-15 && K.maxDiff(b, [1.5, -2, 0]) < 1e-15;
+  });
+  K.addCheck(3, '例子：A 转 90°、B 移 (3, 1)：B·A·(1, 0) = (3, 2)，A·B·(1, 0) = (−1, 4)', () => {
+    const A = K.Rt(K.R2(Math.PI / 2), [0, 0]), B = K.Rt(K.I(2), [3, 1]);
+    return K.maxDiff(K.hom(K.mul(B, A), [1, 0]), [3, 2]) < 1e-12 && K.maxDiff(K.hom(K.mul(A, B), [1, 0]), [-1, 4]) < 1e-12;
+  });
+  K.addCheck(3, '[R | R·t] = R·T(t)：DiffDRR 的 E 是"先平移后旋转"（随机 50 组 3D）', () => {
+    let m = 0;
+    for (let i = 0; i < 50; i++) {
+      const R = K.axisAngle([K.randIn(-1, 1), K.randIn(-1, 1), K.randIn(-1, 1)], K.randIn(-3, 3)), t = [K.randIn(-900, 900), K.randIn(-900, 900), K.randIn(-900, 900)];
+      m = Math.max(m, K.maxDiff(K.Rt(R, K.mv(R, t)), K.mul(K.Rt(R, [0, 0, 0]), K.Rt(K.I(3), t))));
+    }
+    return { ok: m < 1e-9, detail: `最大误差 ${m.toExponential(1)}` };
   });
   K.addCheck(3, '(B·A)·p = B·(A·p)（随机 200 组）', () => {
     let m = 0;
