@@ -1372,9 +1372,26 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
 <h3>w2c：世界坐标 → 相机坐标（投影真正要用的方向）</h3>
 <p>拍片时方向反过来：已知世界里的点，要算它在相机坐标里是多少。所以要 c2w 的逆，叫 <b>w2c</b> = [Rᵀ, −Rᵀ·C]（第 3 章 ④ 的逆矩阵）。它做的事很直观：<b>先减去相机位置，再分别点乘相机的三根轴</b>。</p>
 <p>接着上面的例子：小球 R 在世界 (52, 0, 8)。p − C = (−448, 0, 8)；x_c = (0, 1, 0)·(−448, 0, 8) = 0；y_c = (0, 0, −1)·(−448, 0, 8) = −8；z_c = (−1, 0, 0)·(−448, 0, 8) = 448。意思是：R 在相机<b>正前方 448 mm</b>，水平居中，比画面中心<b>高 8 mm</b>（y_c 为负就是向上）。</p>
+<h3>三个滑块各是什么（以及哪个角被固定成 0）</h3>
+<p>一个相机本来有 6 个自由度：位置 3 个、朝向 3 个。为了好理解，下面的相机只开放 3 个，另外 3 个被固定住：</p>
+<div class="table-wrap"><table class="cmp" style="min-width:640px">
+<thead><tr><th>参数</th><th>几何意义</th><th>对应的旋转</th><th>取 0 时</th></tr></thead>
+<tbody>
+<tr><td><b>方位角 az</b>（滑块）</td><td>相机绕<b>世界 z 轴</b>（竖直轴）转一圈，在水平面里从 +x 转向 +y</td><td>Rz(az)</td><td>相机在 +x 一侧（病人右边）</td></tr>
+<tr><td><b>仰角 el</b>（滑块）</td><td>在"相机 + z 轴"所在的竖直平面里把相机往上抬（负数往下压）</td><td>绕水平轴转；在基准朝向下就是 Ry(−el)</td><td>相机和头一样高</td></tr>
+<tr><td><b>距离 d</b>（滑块）</td><td>相机离原点多远</td><td>不是旋转，是沿视线后退</td><td>—</td></tr>
+<tr><td><b>视线方向</b>（固定）</td><td>视线永远对准世界原点（look-at），不能"偏着看"</td><td>固定了 2 个朝向自由度</td><td>—</td></tr>
+<tr><td><b>滚转 roll</b>（固定为 0）</td><td>相机绕自己的视线 z_c 转，也就是画面歪不歪</td><td>绕 z_c 转</td><td><b>永远是 0</b>：x_c 始终水平，画面不歪</td></tr>
+</tbody></table></div>
+<p>写成公式：相机位置 C = d·(cos el·cos az, cos el·sin az, sin el)；z_c = −C ⁄ |C|（对准原点）；x_c = z_c × ẑ 再归一化 = (−sin az, cos az, 0)，z 分量恒为 0，这就是"滚转 = 0"；y_c = z_c × x_c。</p>
+<p>用第 4 章的话说，这就是一组欧拉角：<b>R = Rz(az) · Ry(−el) · R₀</b>。R₀ 是 az = el = 0 时的朝向（相机在 +x、看向 −x）；外旋读法是先从 R₀ 出发绕世界 y 抬起仰角，再绕世界 z 转方位角。第三个角（滚转）不给滑块，固定为 0。</p>
+<ul class="tight">
+<li><b>为什么仰角只到 ±70°</b>：到 ±90° 时相机在头的正上方或正下方，视线和 z 轴平行，z_c × ẑ = 0，"水平方向"没有定义，x_c 算不出来。这和第 4 章的万向锁是同一类问题。</li>
+<li><b>和第 9 章 C 臂的关系</b>：C 臂也只用两个角。主角度绕世界 z 转，对应这里的方位角；副角度绕水平轴抬起，对应这里的仰角。GeoReg 把中间那个 Y 角固定为 0。结构一样，只是基准朝向（这里从 +x 出发，DiffDRR 从 +y 出发）和正负号不同。</li>
+</ul>
 <p>下面可以拖动相机。左边 3D 是<b>世界里</b>的样子；右边小图是<b>相机坐标系里</b>的样子（x_c 向右、y_c 向下，只画位置，还没做透视）。点"相机放到 (500, 0, 0)"就是上面手算的例子。</p>
 <div class="widget">
-  <div class="stage"><div id="c6-view"></div><div class="stage-foot">黑球 = 相机（源）位置；浅色箭头 = 相机自己的三根轴；灰色框 = 成像平面；黄色小球 = 右边正在换算的那个点。原点处的头就是世界原点。</div></div>
+  <div class="stage"><div id="c6-view"></div><div class="stage-foot">黑球 = 相机（源）位置；浅色箭头 = 相机自己的三根轴；灰色框 = 成像平面；黄色小球 = 右边正在换算的那个点。原点处的头就是世界原点。蓝色虚线圆 = 只拖方位角时相机走的路；紫色虚线弧 = 只拖仰角时相机走的路。</div></div>
   <div class="panel" id="c6-panel"></div>
 </div>
 <div class="key"><b>要点</b><ul class="tight">
@@ -1401,7 +1418,9 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
   const inset = K.s('svg', { viewBox: '0 0 260 230', class: 'plane', style: 'max-width:300px;background:#fcfcfb;border:1px solid var(--line);border-radius:8px' }, panel);
   const read = K.h('div'); panel.append(read);
 
-  let v = null, camFr, srcBall, frus, plane, ptBall, ray, camLab;
+  let v = null, camFr, srcBall, frus, plane, ptBall, ray, camLab, azLn, elLn;
+  const R0 = [[0, 0, -1], [1, 0, 0], [0, -1, 0]];   // az = el = 0：相机在 +x，x_c = +y，y_c = −z，z_c = −x
+  const opSpan = t => `<span style="display:inline-block;vertical-align:top;margin:26px 6px 0 0;font:600 16px ui-monospace,Menlo,monospace;color:var(--ink2)">${t}</span>`;
   K.lazy(host, () => {
     v = K.view3d(host, { cam: [700, -950, 560], near: 1 });
     if (!v) return;
@@ -1415,6 +1434,8 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
     plane = K.quad(v, 0xadb5bd, { opacity: 0.25, edge: 0x868e96 });
     ptBall = K.ball(v, [0, 0, 0], 6, 0xfab005);
     ray = K.line(v, [[0, 0, 0], [0, 0, 1]], 0xf08c00, { dash: 10 });
+    azLn = K.line(v, [[0, 0, 0], [0, 0, 1]], 0x4dabf7, { dash: 14, opacity: 0.9 });
+    elLn = K.line(v, [[0, 0, 0], [0, 0, 1]], 0x9775fa, { dash: 14, opacity: 0.9 });
     update();
   });
   K.hoverCols(read, (c, mat) => {
@@ -1453,6 +1474,10 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
       frus.forEach((ln, i) => ln.userData.set([C, cs[i]]));
       plane.userData.set(cs);
       ptBall.position.set(...p); ray.userData.set([C, p]);
+      const az = K.rad(st.az), el = K.rad(st.el), circ = [], arc = [];
+      for (let i = 0; i <= 96; i++) { const a = i / 96 * 2 * Math.PI; circ.push(K.orbitPos(a, el, st.d)); }
+      for (let i = 0; i <= 48; i++) { const e = K.rad(-70 + 140 * i / 48); arc.push(K.orbitPos(az, e, st.d)); }
+      azLn.userData.set(circ); elLn.userData.set(arc);
       v.req();
     }
     drawInset(Wc, p);
@@ -1461,7 +1486,13 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
       `<div data-m="c2w">${K.matHTML(M, { name: 'c2w（相机 → 世界）', colClass: K.AXCLS4, digits: 2, dimRow: 4, foot: '列 1–3：相机 x/y/z 轴在世界里的方向　列 4：相机位置 C' })}</div>` +
       K.matHTML(Wc, { name: 'w2c = c2w⁻¹（世界 → 相机）', digits: 2, dimRow: 4, colClass: ['', '', '', 'ax-t'], foot: `前 3×3 = Rᵀ　列 4 = −Rᵀ·C = ${K.vec(K.getT(Wc), 1)}，<b>不是</b>相机位置` }) +
       `<h4>把点 ${st.pt === 'custom' ? '' : st.pt + ' '}${K.vec(p, 0)} 换到相机坐标</h4><div class="eq">p − C = ${K.vec(rel, 1)}　← 先减去相机位置\n<span class="cx">x_c = ${K.vec(K.col(R, 0))} · (p − C) = ${pad(pc[0])}</span>　← 偏右多少\n<span class="cy">y_c = ${K.vec(K.col(R, 1))} · (p − C) = ${pad(pc[1])}</span>　← 偏下多少（负 = 偏上）\n<span class="cz">z_c = ${K.vec(K.col(R, 2))} · (p − C) = ${pad(pc[2])}</span>　← 深度（> 0 在相机前方）</div>` +
-      `<div class="read">和 w2c·[p, 1] 的结果 ${K.vec(pc)} 完全一样：矩阵乘法就是这三次点乘。</div>`;
+      `<div class="read">和 w2c·[p, 1] 的结果 ${K.vec(pc)} 完全一样：矩阵乘法就是这三次点乘。</div>` +
+      `<h4>三个滑块怎么变成 c2w 的 R（第 4 章的欧拉角）</h4>` +
+      K.matHTML(K.Rz(K.rad(st.az)), { name: `Rz(az = ${K.fmt(st.az, 0)}°)`, digits: 2 }) + opSpan('·') +
+      K.matHTML(K.Ry(-K.rad(st.el)), { name: `Ry(−el = ${K.fmt(-st.el, 0)}°)`, digits: 2 }) + opSpan('·') +
+      K.matHTML(R0, { name: 'R₀（az = el = 0）', digits: 0 }) + opSpan('=') +
+      K.matHTML(R, { name: 'c2w 的前 3×3', colClass: K.AXCLS3, digits: 2 }) +
+      `<div class="read">和 look-at 算出来的 R 相差 ${K.fmt(K.maxDiff(K.mulN(K.Rz(K.rad(st.az)), K.Ry(-K.rad(st.el)), R0), R), 6)}；x_c 的 z 分量 = ${K.fmt(R[2][0], 3)}（滚转固定为 0，画面不歪）</div>`;
   }
   update();
 
@@ -1474,6 +1505,20 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
     q: '一个点的相机坐标是 (0, 0, 300)。它在哪？',
     options: ['在世界原点', '在相机正前方 300 mm', '在相机正上方 300 mm'], answer: 1,
     explain: 'x_c = y_c = 0 表示正对视线，z_c = 300 表示沿视线往前 300 mm。换到世界要用 c2w：C + 300 × z_c。'
+  });
+  K.quiz(document.getElementById('c6-quiz'), {
+    q: '方位角 = 90°、仰角 = 0°、距离 600。相机在哪、朝哪看？',
+    options: ['在 (0, 600, 0)，朝 −y 看（在病人前方往后看）', '在 (600, 0, 0)，朝 −x 看', '在 (0, 0, 600)，朝下看'], answer: 0,
+    explain: '方位角是绕世界 z 轴从 +x 转向 +y，转 90° 就到了 +y；仰角 0 表示和头一样高；视线永远对准原点，所以朝 −y 看。'
+  });
+  K.addCheck(6, 'look-at 的 R = Rz(az)·Ry(−el)·R₀，且 x_c 的 z 分量为 0（随机 100 组）', () => {
+    const R0 = [[0, 0, -1], [1, 0, 0], [0, -1, 0]];
+    let m = 0;
+    for (let i = 0; i < 100; i++) {
+      const az = K.randIn(-3.14, 3.14), el = K.randIn(-1.2, 1.2), R = K.getR(K.lookAtCV(K.orbitPos(az, el, K.randIn(250, 900))));
+      m = Math.max(m, K.maxDiff(R, K.mulN(K.Rz(az), K.Ry(-el), R0)), Math.abs(R[2][0]));
+    }
+    return { ok: m < 1e-9, detail: `最大误差 ${m.toExponential(1)}` };
   });
   K.addCheck(6, '手算例子：相机在 (500, 0, 0) 看原点，(0, 0, 300) → 世界 (200, 0, 0)；小球 R → 相机 (0, −8, 448)', () => {
     const M = K.lookAtCV([500, 0, 0]);
