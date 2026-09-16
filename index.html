@@ -1058,8 +1058,9 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
 <tr><td>内旋，从左往右</td><td>绕 Z 转 90°<br><span class="hint">此时积木的 y′ 指向世界 −x</span></td><td>绕<b>积木自己的 y′</b>（= 世界 −x）转 90°</td></tr>
 </tbody></table></div>
 <p>下面先点"用这个例子"，再分别点两个播放按钮：黄色粗箭头标出每一步绕的那根轴，两次播放停在同一个姿态。</p>
+<div class="warn"><b>注意第一步。</b>积木还没转过的时候，它自己的轴和世界的轴是<b>重合</b>的，所以不管哪种读法，第一步看起来都像"绕世界轴转"。两种读法的区别<b>从第二步才开始</b>：内旋第二步绕的是积木转过一次之后的 y′，它已经不是世界 y 了。播放时灰色细箭头会把"另一种读法此刻会绕的轴"画出来对比。</div>
 <div class="widget">
-  <div class="stage"><div id="c4-view"></div><div class="stage-foot">蓝色积木 = 当前顺序的结果；半透明灰色积木 = 换成另一种乘法顺序的结果。黄色粗箭头 = 播放时正在绕的轴。</div></div>
+  <div class="stage"><div id="c4-view"></div><div class="stage-foot">蓝色积木 = 当前顺序的结果；半透明灰色积木 = 换成另一种乘法顺序的结果。黄色粗箭头 = 播放时正在绕的轴；灰色细箭头 = 对比用的另一根轴（外旋时画积木自己的同名轴，内旋时画世界轴）。</div></div>
   <div class="panel" id="c4-panel"></div>
 </div>
 <div class="key"><b>对到代码</b><ul class="tight">
@@ -1104,7 +1105,7 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
   const read = K.h('div');
   panel.append(cap, read);
 
-  let v = null, fb, ghost, fr, hlA;
+  let v = null, fb, ghost, fr, hlA, cmpA;
   K.lazy(host, () => {
     v = K.view3d(host, { cam: [4.2, -6.8, 3.8], target: [0.6, 0.8, 0.8] });
     if (!v) return;
@@ -1113,14 +1114,16 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
     ghost = K.fBlock(0xadb5bd, { opacity: 0.28 }); v.scene.add(ghost);
     fr = K.frame(v, 1.6, { soft: true, names: ["x'", "y'", "z'"], r: 0.032 });
     hlA = K.arrow(0xfab005, { r: 0.05 }); v.scene.add(hlA); hlA.visible = false;
+    cmpA = K.arrow(0x868e96, { r: 0.026, opacity: 0.8 }); v.scene.add(cmpA); cmpA.visible = false;
     update();
   });
 
-  function pose(R, axis) {
+  function pose(R, axis, cmp) {
     if (!v) return;
     K.setMatrix(fb, K.Rt(R, [0, 0, 0])); fr.set(K.Rt(R, [0, 0, 0]));
     K.setMatrix(ghost, K.Rt(Rconv(other()), [0, 0, 0])); ghost.visible = st.ghost && !st.anim;
     if (axis) { K.setArrow(hlA, K.scl(axis, -3.1), K.scl(axis, 3.1), 0.05); hlA.visible = true; } else hlA.visible = false;
+    if (axis && cmp && K.norm(K.cross(axis, cmp)) > 0.02) { K.setArrow(cmpA, K.scl(cmp, -2.6), K.scl(cmp, 2.6), 0.026); cmpA.visible = true; } else cmpA.visible = false;
     v.req();
   }
   function update() {
@@ -1138,9 +1141,13 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
       K.matHTML(Ro, { name: `换成 ${other()} 顺序`, digits: 2, foot: `与当前最大相差 ${K.fmt(K.maxDiff(R, Ro), 3)}${K.maxDiff(R, Ro) < 1e-9 ? '（这组角度下碰巧一样）' : ''}` }) +
       (lock ? `<div class="warn" style="margin:6px 0">万向锁：现在 R 只取决于 γ − α = ${K.fmt(wrap(st.g - st.a), 0)}°。点"α、γ 同时 +30°"，积木纹丝不动。</div>` : '');
   }
-  function stop() { if (st.anim) { cancelAnimationFrame(st.anim); st.anim = null; } }
+  function stop(silent) {
+    if (!st.anim) return;
+    cancelAnimationFrame(st.anim); st.anim = null;
+    if (!silent) cap.innerHTML = '播放被打断了（角度变了）。上一段说明只对应开始播放时的角度，重新点播放按钮。';
+  }
   function play(ext) {
-    stop();
+    stop(true);
     const L = lettersOf(st.conv), ang = L.map(angOf);
     const order = (ext ? [2, 1, 0] : [0, 1, 2]).filter(i => Math.abs(ang[i]) > 1e-9);   // 角度为 0 的那一步什么都不做，跳过
     const n = order.length;
@@ -1154,10 +1161,16 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
       const step = K.Raxis(L[idx], ang[idx] * u);
       const R = ext ? K.mul(step, before) : K.mul(before, step);
       const axis = ext ? E[L[idx]] : K.mv(before, E[L[idx]]);
-      pose(R, axis);
+      const cmp = ext ? K.mv(before, E[L[idx]]) : E[L[idx]];   // 对照：外旋时画积木自己的同名轴，内旋时画世界轴
+      pose(R, axis, cmp);
+      const l = L[idx].toLowerCase(), differ = K.norm(K.cross(axis, cmp)) > 0.02;
+      const note = k === 0
+        ? '第一步时积木还没转过，它自己的轴和世界的轴<b>重合</b>，所以这一步两种读法看起来一样；从第二步开始才分得出来。'
+        : differ ? `灰色细箭头 = ${ext ? `积木自己的 ${l}${'′'.repeat(k)} 轴` : `世界 ${L[idx]} 轴`}，拿来对比：两者已经不重合了。`
+        : '这一步积木自己的轴碰巧还和世界轴重合。';
       const axName = ext ? `世界 ${L[idx]} 轴` : `积木自己的 ${L[idx].toLowerCase()}${'′'.repeat(k)} 轴（此刻指向世界 ${K.vec(axis, 2)}）`;
       cap.innerHTML = `${ext ? '外旋' : '内旋'} · 第 ${k + 1} 步：绕<b>${axName}</b>转 ${NM[L[idx]]} = ${K.fmt(K.deg(ang[idx]) * u, 0)}°` +
-        `<br><span class="hint">${ext ? '新的一步乘在左边：R ← R' + L[idx].toLowerCase() + ' · R' : '新的一步乘在右边：R ← R · R' + L[idx].toLowerCase()}</span>`;
+        `<br><span class="hint">${ext ? '新的一步乘在左边：R ← R' + l + ' · R' : '新的一步乘在右边：R ← R · R' + l}</span><br><span class="hint">${note}</span>`;
       if (T < n * dur + (n - 1) * gap) st.anim = requestAnimationFrame(tick);
       else { st.anim = null; pose(Rconv(st.conv), null); cap.innerHTML = `${ext ? '外旋' : '内旋'}读法 ${n} 步做完，停在 R${L[0].toLowerCase()}·R${L[1].toLowerCase()}·R${L[2].toLowerCase()} 这个姿态。再点另一个播放按钮，终点完全一样。`; update(); }
     };
