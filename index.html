@@ -136,7 +136,7 @@ table.small tr.sel td{background:var(--hl)} table.small tbody tr{cursor:pointer}
   <li><a href="#ch1">坐标系是什么</a><span class="st" data-ch="1"></span></li>
   <li><a href="#ch2">旋转矩阵：列就是新的坐标轴</a><span class="st" data-ch="2"></span></li>
   <li><a href="#ch3">齐次坐标与 4×4：补一个 1、顺序、逆</a><span class="st" data-ch="3"></span></li>
-  <li><a href="#ch4">欧拉角：顺序决定结果</a><span class="st" data-ch="4"></span></li>
+  <li><a href="#ch4">欧拉角：用 3 个数描述一个旋转</a><span class="st" data-ch="4"></span></li>
   <li><a href="#ch5">体素下标 ↔ 世界坐标</a><span class="st" data-ch="5"></span></li>
   <li><a href="#ch6">相机外参：c2w 与 w2c</a><span class="st" data-ch="6"></span></li>
   <li><a href="#ch7">投影：相机坐标 → 像素</a><span class="st" data-ch="7"></span></li>
@@ -1033,15 +1033,33 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
 </script>
 
 <section class="ch" id="ch4">
-<div class="ch-head"><span class="ch-num">第 4 章</span><h2>欧拉角：顺序决定结果</h2><details class="chk" data-ch="4"><summary>自检…</summary></details></div>
-<p>用三个角度描述旋转，就是依次绕三根轴各转一次，再把三个矩阵乘起来。麻烦有两个：<b>乘的顺序</b>不同，结果不同；而且同一串矩阵有<b>两种读法</b>。</p>
+<div class="ch-head"><span class="ch-num">第 4 章</span><h2>欧拉角：用 3 个数描述一个旋转</h2><details class="chk" data-ch="4"><summary>自检…</summary></details></div>
+<h3>从前两章接过来</h3>
 <ul class="tight">
-<li><b>外旋</b>：每一步都绕<b>世界</b>的固定轴转。R = Rz(α)·Ry(β)·Rx(γ) 读作"先绕世界 X 转 γ，再绕世界 Y 转 β，最后绕世界 Z 转 α"（从右往左）。</li>
-<li><b>内旋</b>：每一步绕<b>物体自己当前的</b>轴转。同一个 R 读作"先绕 z 转 α，再绕新的 y′ 转 β，最后绕更新后的 x″ 转 γ"（从左往右）。</li>
+<li><b>第 2 章</b>：3D 旋转矩阵有 9 个数，但不能随便填，三列必须长度为 1、两两垂直。真正能自由调的只有 <b>3 个</b>。</li>
+<li><b>第 3 章</b>：连着做几次变换 = 几个矩阵相乘，<b>顺序不同结果不同</b>。</li>
 </ul>
-<p>两种读法落到<b>同一个姿态</b>。下面点"分步播放"，黄色粗箭头标出每一步绕的那根轴。</p>
+<p>于是有个实际问题：<b>怎么用 3 个数说清楚一个旋转？</b>C 臂的主角度、副角度，DiffDRR 的 <code>rot</code>，优化器要调的参数，都需要这 3 个数，不可能让人去填 9 个互相牵制的矩阵元素。</p>
+<p><b>欧拉角的办法：把任意旋转拆成"绕坐标轴转 3 次"。</b>绕某一根坐标轴转，矩阵特别简单，只有一个角度：</p>
+<div id="c4-sym" style="margin:6px 0"></div>
+<p>三个乘起来就是 R。既然是连乘，第 3 章的教训马上用上：<b>先绕哪根轴，结果不一样</b>。所以欧拉角一定要带顺序名，比如 <b>ZYX</b> 表示 R = Rz(α)·Ry(β)·Rx(γ)。只说"三个角是 30°、20°、10°"而不说顺序，是还原不出旋转的。</p>
+
+<h3>再多一个坑：绕的是"哪根"轴？</h3>
+<p>转第二次时，物体已经转过一次了。"绕 y 轴转"指的是<b>世界</b>的 y 轴，还是物体<b>自己</b>转过之后的 y′ 轴？两种说法都有人用，而且<b>同一个乘积 R = Rz(α)·Ry(β)·Rx(γ) 两种都能读</b>：</p>
+<ul class="tight">
+<li><b>外旋（绕世界的固定轴）</b>：<b>从右往左</b>读，和第 3 章完全一样。先绕世界 X 转 γ，再绕世界 Y 转 β，最后绕世界 Z 转 α。每新做一步，矩阵乘在<b>左边</b>。</li>
+<li><b>内旋（绕物体自己的轴）</b>：<b>从左往右</b>读。先绕 Z 转 α，再绕物体转过之后的 y′ 转 β，最后绕再转过之后的 x″ 转 γ。每新做一步，矩阵乘在<b>右边</b>。</li>
+</ul>
+<p>两种读法的终点完全一样。最简单的例子：α = 90°、β = 90°、γ = 0，也就是 R = Rz(90°)·Ry(90°)：</p>
+<div class="table-wrap"><table class="cmp" style="min-width:600px">
+<thead><tr><th>读法</th><th>第一步</th><th>第二步</th><th>终点（积木三根轴指向）</th></tr></thead>
+<tbody>
+<tr><td>外旋，从右往左</td><td>绕<b>世界 Y</b> 转 90°</td><td>绕<b>世界 Z</b> 转 90°</td><td rowspan="2">x′ → 世界 −z<br>y′ → 世界 −x<br>z′ → 世界 +y</td></tr>
+<tr><td>内旋，从左往右</td><td>绕 Z 转 90°<br><span class="hint">此时积木的 y′ 指向世界 −x</span></td><td>绕<b>积木自己的 y′</b>（= 世界 −x）转 90°</td></tr>
+</tbody></table></div>
+<p>下面先点"用这个例子"，再分别点两个播放按钮：黄色粗箭头标出每一步绕的那根轴，两次播放停在同一个姿态。</p>
 <div class="widget">
-  <div class="stage"><div id="c4-view"></div><div class="stage-foot">蓝色积木 = 当前顺序的结果；半透明灰色积木 = 换成另一种顺序的结果。黄色粗箭头 = 播放时正在绕的轴。</div></div>
+  <div class="stage"><div id="c4-view"></div><div class="stage-foot">蓝色积木 = 当前顺序的结果；半透明灰色积木 = 换成另一种乘法顺序的结果。黄色粗箭头 = 播放时正在绕的轴。</div></div>
   <div class="panel" id="c4-panel"></div>
 </div>
 <div class="key"><b>对到代码</b><ul class="tight">
@@ -1055,23 +1073,34 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
 (function () {
   const panel = document.getElementById('c4-panel'), host = document.getElementById('c4-view');
   const E = { X: [1, 0, 0], Y: [0, 1, 0], Z: [0, 0, 1] };
-  const st = { a: 50, b: 30, g: 40, conv: 'ZYX', ghost: true, mode: 'ext', anim: null };
+  const NM = { Z: 'α', Y: 'β', X: 'γ' };
+  const st = { a: 50, b: 30, g: 40, conv: 'ZYX', ghost: true, anim: null };
   const lettersOf = c => c.split('');
   const angOf = L => K.rad(L === 'Z' ? st.a : L === 'Y' ? st.b : st.g);
   const Rconv = c => K.mulN(...lettersOf(c).map(L => K.Raxis(L, angOf(L))));
   const other = () => (st.conv === 'ZYX' ? 'XYZ' : 'ZYX');
   const wrap = x => ((x + 540) % 360) - 180;
+  const op = s => `<span style="display:inline-block;vertical-align:top;margin:26px 6px 0 0;font:600 16px ui-monospace,Menlo,monospace;color:var(--ink2)">${s}</span>`;
+
+  document.getElementById('c4-sym').innerHTML =
+    K.matHTML([['cos α', '−sin α', '0'], ['sin α', 'cos α', '0'], ['0', '0', '1']], { name: 'Rz(α)：绕 z 转，z 分量不动' }) +
+    K.matHTML([['cos β', '0', 'sin β'], ['0', '1', '0'], ['−sin β', '0', 'cos β']], { name: 'Ry(β)：绕 y 转，y 分量不动' }) +
+    K.matHTML([['1', '0', '0'], ['0', 'cos γ', '−sin γ'], ['0', 'sin γ', 'cos γ']], { name: 'Rx(γ)：绕 x 转，x 分量不动' });
 
   const sA = K.slider(panel, { label: 'α（绕 Z）', min: -180, max: 180, value: st.a, unit: '°', oninput: x => { st.a = x; stop(); update(); } });
   const sB = K.slider(panel, { label: 'β（绕 Y）', min: -90, max: 90, value: st.b, unit: '°', oninput: x => { st.b = x; stop(); update(); } });
   const sG = K.slider(panel, { label: 'γ（绕 X）', min: -180, max: 180, value: st.g, unit: '°', oninput: x => { st.g = x; stop(); update(); } });
   const sConv = K.seg(panel, { label: '乘法顺序', value: 'ZYX', options: [{ value: 'ZYX', label: 'ZYX：Rz·Ry·Rx（DiffDRR）' }, { value: 'XYZ', label: 'XYZ：Rx·Ry·Rz' }], onchange: c => { st.conv = c; stop(); update(); } });
-  K.toggle(panel, { label: '显示另一种顺序的结果', value: true, onchange: b => { st.ghost = b; update(); } });
-  K.seg(panel, { label: '分步播放的读法', value: 'ext', options: [{ value: 'ext', label: '外旋（绕世界轴）' }, { value: 'int', label: '内旋（绕自己的轴）' }], onchange: m => { st.mode = m; } });
-  K.button(panel, '▶ 分步播放', () => play(), 'primary');
-  K.button(panel, 'β = 90°（万向锁）', () => { st.conv = 'ZYX'; sConv.set('ZYX', false); sB.set(90); });
-  K.button(panel, 'α、γ 同时 +30°', () => { sA.set(wrap(st.a + 30), false); sG.set(wrap(st.g + 30), false); st.a = sA.get(); st.g = sG.get(); stop(); update(); });
-  const cap = K.h('div', { class: 'eq', style: 'white-space:normal' }, '拖动三个角度，或者点"分步播放"。');
+  K.toggle(panel, { label: '显示另一种乘法顺序的结果', value: true, onchange: b => { st.ghost = b; update(); } });
+  const setAngles = (a, b, g) => { stop(); st.conv = 'ZYX'; sConv.set('ZYX', false); sA.set(a, false); sB.set(b, false); sG.set(g, false); st.a = a; st.b = b; st.g = g; update(); };
+  panel.append(K.h('div', { class: 'seg-label' }, '例子与播放'));
+  K.button(panel, '用这个例子（α = 90°, β = 90°, γ = 0）', () => setAngles(90, 90, 0));
+  K.button(panel, '▶ 外旋读法（绕世界轴，从右往左）', () => play(true), 'primary');
+  K.button(panel, '▶ 内旋读法（绕自己的轴，从左往右）', () => play(false), 'primary');
+  panel.append(K.h('div', { class: 'seg-label' }, '万向锁'));
+  K.button(panel, 'β = 90°', () => { setAngles(st.a, 90, st.g); });
+  K.button(panel, 'α、γ 同时 +30°', () => { setAngles(wrap(st.a + 30), st.b, wrap(st.g + 30)); });
+  const cap = K.h('div', { class: 'eq', style: 'white-space:normal' }, '拖三个角度，或者先点"用这个例子"再点播放。');
   const read = K.h('div');
   panel.append(cap, read);
 
@@ -1095,21 +1124,30 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
     v.req();
   }
   function update() {
-    const R = Rconv(st.conv), Ro = Rconv(other()), L = lettersOf(st.conv);
+    const L = lettersOf(st.conv), R = Rconv(st.conv), Ro = Rconv(other());
     pose(R, null);
     const lock = st.conv === 'ZYX' && Math.abs(Math.abs(st.b) - 90) < 1e-9;
-    read.innerHTML = K.matHTML(R, { name: `R = R${L[0]}·R${L[1]}·R${L[2]}`, colClass: K.AXCLS3, digits: 3 }) +
-      K.matHTML(Ro, { name: `另一种顺序 ${other()}`, digits: 3, foot: `与当前最大相差 ${K.fmt(K.maxDiff(R, Ro), 3)}` }) +
+    const fac = L.map(l => K.matHTML(K.Raxis(l, angOf(l)), { name: `R${l.toLowerCase()}(${NM[l]} = ${K.fmt(K.deg(angOf(l)), 0)}°)`, digits: 2 }));
+    const cols = [0, 1, 2].map(j => K.col(R, j)), dirName = v3 => {
+      const i = v3.map(Math.abs).indexOf(Math.max(...v3.map(Math.abs)));
+      return Math.abs(Math.abs(v3[i]) - 1) < 1e-6 ? (v3[i] > 0 ? '+' : '−') + 'xyz'[i] : K.vec(v3, 2);
+    };
+    read.innerHTML = `<h4>${st.conv}：三个基本旋转乘起来</h4>` + fac[0] + op('·') + fac[1] + op('·') + fac[2] + op('=') +
+      K.matHTML(R, { name: 'R', colClass: K.AXCLS3, digits: 2 }) +
+      `<div class="read">积木的 <span class="cx">x′ → ${dirName(cols[0])}</span>，<span class="cy">y′ → ${dirName(cols[1])}</span>，<span class="cz">z′ → ${dirName(cols[2])}</span>（R 的三列，第 2 章）</div>` +
+      K.matHTML(Ro, { name: `换成 ${other()} 顺序`, digits: 2, foot: `与当前最大相差 ${K.fmt(K.maxDiff(R, Ro), 3)}${K.maxDiff(R, Ro) < 1e-9 ? '（这组角度下碰巧一样）' : ''}` }) +
       (lock ? `<div class="warn" style="margin:6px 0">万向锁：现在 R 只取决于 γ − α = ${K.fmt(wrap(st.g - st.a), 0)}°。点"α、γ 同时 +30°"，积木纹丝不动。</div>` : '');
   }
   function stop() { if (st.anim) { cancelAnimationFrame(st.anim); st.anim = null; } }
-  function play() {
+  function play(ext) {
     stop();
-    const L = lettersOf(st.conv), ang = L.map(angOf), ext = st.mode === 'ext';
-    const order = ext ? [2, 1, 0] : [0, 1, 2];
-    const t0 = performance.now(), dur = 1100, gap = 300;
+    const L = lettersOf(st.conv), ang = L.map(angOf);
+    const order = (ext ? [2, 1, 0] : [0, 1, 2]).filter(i => Math.abs(ang[i]) > 1e-9);   // 角度为 0 的那一步什么都不做，跳过
+    const n = order.length;
+    if (!n) { cap.innerHTML = '三个角都是 0，没有东西可转。先拖一下角度。'; return; }
+    const t0 = performance.now(), dur = 1300, gap = 350;
     const tick = now => {
-      const T = now - t0, k = Math.min(2, Math.floor(T / (dur + gap)));
+      const T = Math.max(0, now - t0), k = K.clamp(Math.floor(T / (dur + gap)), 0, n - 1);   // rAF 的时间戳可能略早于 t0
       const u = K.clamp((T - k * (dur + gap)) / dur, 0, 1), idx = order[k];
       let before = K.I(3);
       for (let j = 0; j < k; j++) { const m = K.Raxis(L[order[j]], ang[order[j]]); before = ext ? K.mul(m, before) : K.mul(before, m); }
@@ -1117,18 +1155,24 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
       const R = ext ? K.mul(step, before) : K.mul(before, step);
       const axis = ext ? E[L[idx]] : K.mv(before, E[L[idx]]);
       pose(R, axis);
-      const nm = { Z: 'α', Y: 'β', X: 'γ' }[L[idx]];
-      cap.innerHTML = `第 ${k + 1} 步：绕<b>${ext ? '世界' : '积木自己的'}</b> ${L[idx]}${ext ? '' : '′'} 轴转 ${nm} = ${K.fmt(K.deg(ang[idx]) * u, 0)}°` +
-        `<br><span class="hint">矩阵累积：${ext ? '新的一步乘在左边' : '新的一步乘在右边'}</span>`;
-      if (T < 3 * dur + 2 * gap) st.anim = requestAnimationFrame(tick);
-      else { st.anim = null; pose(Rconv(st.conv), null); cap.innerHTML = `三步做完。${ext ? '外旋' : '内旋'}的读法停在 R${L[0]}·R${L[1]}·R${L[2]} 这个姿态。换另一种读法再播一次，终点完全一样。`; update(); }
+      const axName = ext ? `世界 ${L[idx]} 轴` : `积木自己的 ${L[idx].toLowerCase()}${'′'.repeat(k)} 轴（此刻指向世界 ${K.vec(axis, 2)}）`;
+      cap.innerHTML = `${ext ? '外旋' : '内旋'} · 第 ${k + 1} 步：绕<b>${axName}</b>转 ${NM[L[idx]]} = ${K.fmt(K.deg(ang[idx]) * u, 0)}°` +
+        `<br><span class="hint">${ext ? '新的一步乘在左边：R ← R' + L[idx].toLowerCase() + ' · R' : '新的一步乘在右边：R ← R · R' + L[idx].toLowerCase()}</span>`;
+      if (T < n * dur + (n - 1) * gap) st.anim = requestAnimationFrame(tick);
+      else { st.anim = null; pose(Rconv(st.conv), null); cap.innerHTML = `${ext ? '外旋' : '内旋'}读法 ${n} 步做完，停在 R${L[0].toLowerCase()}·R${L[1].toLowerCase()}·R${L[2].toLowerCase()} 这个姿态。再点另一个播放按钮，终点完全一样。`; update(); }
     };
     st.anim = requestAnimationFrame(tick);
   }
   update();
 
-  K.quiz(document.getElementById('c4-quiz'), {
-    q: 'α = 90°、β = 0°、γ = 90°。ZYX 和 XYZ 两种顺序得到的姿态一样吗？',
+  const qz = document.getElementById('c4-quiz');
+  K.quiz(qz, {
+    q: 'R = Rz(α)·Ry(β)·Rx(γ)。按外旋读法（绕世界固定轴），第一步是？',
+    options: ['绕世界 X 转 γ', '绕世界 Z 转 α', '绕积木自己的 z 转 α'], answer: 0,
+    explain: '外旋从右往左读，和第 3 章"离 p 最近的先做"一样，Rx(γ) 最靠右，先做。内旋读法才是先绕 Z 转 α。'
+  });
+  K.quiz(qz, {
+    q: 'α = 90°、β = 0°、γ = 90°。ZYX 和 XYZ 两种乘法顺序得到的姿态一样吗？',
     options: ['一样', '不一样'], answer: 1,
     explain: 'Rz(90°)·Rx(90°) ≠ Rx(90°)·Rz(90°)，矩阵乘法不能交换。上面把角度设好，灰色积木和蓝色积木明显不重合。'
   });
@@ -1142,6 +1186,11 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
       m = Math.max(m, K.maxDiff(ext, mulSeq(L, a)), K.maxDiff(int, mulSeq(L, a)));
     }
     return { ok: m < 1e-12, detail: `最大误差 ${m.toExponential(1)}` };
+  });
+  K.addCheck(4, '例子 Rz(90°)·Ry(90°)：x′→−z、y′→−x、z′→+y，且"绕自己的 y′（= 世界 −x）"与之一致', () => {
+    const h = Math.PI / 2, R = K.mul(K.Rz(h), K.Ry(h)), yAxis = K.mv(K.Rz(h), [0, 1, 0]);
+    const intr = K.mul(K.axisAngle(yAxis, h), K.Rz(h));
+    return K.maxDiff(R, [[0, -1, 0], [0, 0, 1], [-1, 0, 0]]) < 1e-12 && K.maxDiff(yAxis, [-1, 0, 0]) < 1e-12 && K.maxDiff(intr, R) < 1e-12;
   });
   K.addCheck(4, 'ZYX、β = 90° 时 α、γ 同加一个角度姿态不变', () => {
     const R1 = mulSeq(['Z', 'Y', 'X'], [0.4, Math.PI / 2, 1.1]), R2 = mulSeq(['Z', 'Y', 'X'], [0.4 + 0.7, Math.PI / 2, 1.1 + 0.7]);
