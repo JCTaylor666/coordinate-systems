@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>空间坐标系 · 交互讲解</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+:root{--bg:#fafaf8;--panel:#fff;--ink:#1b1b1a;--ink2:#55544f;--muted:#8a8984;--line:#e5e4df;--soft:#f3f2ee;
+  --x:#e03131;--y:#2f9e44;--z:#1c7ed6;--t:#6c6b66;--acc:#f08c00;--acc2:#7048e8;--acc3:#0c8599;--good:#2b8a3e;--bad:#c92a2a;--hl:#fff3bf}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.75 -apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+main{max-width:1180px;margin:0 auto;padding:28px 20px 100px}
+h1{font-size:30px;line-height:1.25;margin:8px 0 6px}
+.sub{color:var(--ink2);margin:0 0 16px}
+section.ch{margin:60px 0 0;padding-top:18px;border-top:1px solid var(--line)}
+.ch-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px}
+.ch-num{font:600 13px/1 ui-monospace,Menlo,monospace;color:var(--muted)}
+h2{font-size:23px;margin:0}
+h3{font-size:16.5px;margin:22px 0 6px}
+p{margin:8px 0}
+ul.tight{margin:6px 0;padding-left:22px} ul.tight li{margin:3px 0}
+code,.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.92em}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+b.x,.cx{color:var(--x)} b.y,.cy{color:var(--y)} b.z,.cz{color:var(--z)}
+.widget{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;margin:14px 0;align-items:start}
+@media(max-width:880px){.widget{grid-template-columns:1fr}}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative}
+.v3d{height:440px;position:relative;touch-action:none}
+.v3d canvas{display:block}
+.nothree{padding:40px 20px;color:var(--bad);font-size:14px}
+.stage-foot{font-size:12px;color:var(--muted);padding:4px 10px;border-top:1px solid var(--line);background:#fcfcfb}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px;min-width:0}
+.panel h4{font-size:13px;color:var(--ink2);margin:10px 0 4px;font-weight:600}
+.panel h4:first-child{margin-top:0}
+.sl{display:grid;grid-template-columns:7.8em minmax(0,1fr) 5.6em;align-items:center;gap:8px;margin:2px 0}
+.sl input{width:100%;margin:0}
+.sl-name{font-size:13px;color:var(--ink2)}
+.sl-val{font:12.5px ui-monospace,Menlo,monospace;text-align:right;color:var(--ink)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:3px 6px 3px 0;vertical-align:middle}
+.seg button{border:0;background:#fff;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--ink);color:#fff}
+.seg-label{font-size:12.5px;color:var(--muted);margin-top:6px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer;margin:3px 6px 3px 0}
+.btn:hover{border-color:var(--ink2)} .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+label.tg{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--ink2);margin:3px 12px 3px 0;cursor:pointer}
+.mat{display:inline-grid;gap:0 8px;padding:2px 8px;border-left:2px solid var(--ink2);border-right:2px solid var(--ink2);border-radius:5px;font:12.5px/1.55 ui-monospace,Menlo,monospace;text-align:right}
+.mat span{padding:0 3px;border-radius:3px;min-width:3.2em}
+.mat .ax-x{color:var(--x)} .mat .ax-y{color:var(--y)} .mat .ax-z{color:var(--z)} .mat .ax-t{color:var(--t)} .mat .dim{color:#b5b4ae}
+.mat span.hl{background:var(--hl)}
+.matwrap{display:inline-flex;flex-direction:column;align-items:flex-start;margin:4px 12px 6px 0;vertical-align:top;max-width:100%}
+.mat-name{font-size:12.5px;color:var(--ink2);margin-bottom:2px}
+.mat-foot{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.4}
+.eq{font:12.5px/1.85 ui-monospace,"SF Mono",Menlo,monospace;background:var(--soft);border-radius:7px;padding:7px 10px;overflow-x:auto;white-space:pre;margin:6px 0}
+.eq .hl{background:var(--hl);border-radius:3px}
+.read{font:12.5px/1.7 ui-monospace,Menlo,monospace}
+.key{background:#edf2ff;border-left:4px solid var(--z);border-radius:6px;padding:10px 14px;margin:14px 0}
+.warn{background:#fff4e6;border-left:4px solid var(--acc);border-radius:6px;padding:10px 14px;margin:14px 0}
+details.chk{font-size:12.5px;color:var(--muted);margin-left:auto}
+details.chk summary{cursor:pointer;list-style:none}
+details.chk summary b{font-weight:600;color:var(--good)} details.chk.bad summary b{color:var(--bad)}
+details.chk ul{margin:4px 0;padding-left:16px;list-style:none}
+details.chk li.no{color:var(--bad)} details.chk li span{color:var(--muted);margin-left:6px}
+.quiz{border:1px dashed #cfcec8;border-radius:10px;padding:10px 14px;margin:14px 0;background:#fff}
+.quiz-q{font-weight:600;font-size:14.5px}
+.quiz-opts{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.quiz-opts button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 12px;font:inherit;font-size:13.5px;cursor:pointer}
+.quiz-opts button.right{background:#ebfbee;border-color:var(--good)} .quiz-opts button.wrong{background:#fff5f5;border-color:var(--bad)}
+.quiz-fb{font-size:13.5px;color:var(--ink2)}
+.lbl-layer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;left:0;top:0;font:600 12px/1 ui-monospace,Menlo,monospace;color:var(--ink);white-space:nowrap;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff}
+.lbl.ax0{color:var(--x)} .lbl.ax1{color:var(--y)} .lbl.ax2{color:var(--z)} .lbl.soft{font-weight:400;color:var(--ink2)}
+.hint{font-size:12.5px;color:var(--muted)}
+svg.plane{width:100%;height:auto;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
+svg.plane text{font:12px ui-monospace,Menlo,monospace}
+.drag{cursor:grab} .drag:active{cursor:grabbing}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 0}
+.tabs button{border:1px solid var(--line);border-bottom:0;background:var(--soft);border-radius:8px 8px 0 0;padding:5px 12px;font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink2)}
+.tabs button.on{background:#fff;color:var(--ink);font-weight:600}
+.tabbody{border:1px solid var(--line);border-radius:0 10px 10px 10px;background:#fff;padding:12px}
+canvas.px{image-rendering:pixelated;width:100%;height:auto;border-radius:6px;background:#111;display:block}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px} @media(max-width:560px){.twocol{grid-template-columns:1fr}}
+.table-wrap{overflow-x:auto;margin:10px 0}
+table.cmp{border-collapse:collapse;font-size:13.5px;min-width:720px;width:100%}
+table.cmp th,table.cmp td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.cmp th{background:#f5f4f0;color:var(--ink2);font-weight:600}
+table.small{border-collapse:collapse;font:12px/1.5 ui-monospace,Menlo,monospace}
+table.small td,table.small th{border-bottom:1px solid var(--line);padding:2px 8px;text-align:right;white-space:nowrap}
+table.small tr.sel td{background:var(--hl)} table.small tbody tr{cursor:pointer}
+.chain{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:14px 0}
+.chain .node{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;text-align:center;cursor:pointer;min-width:120px}
+.chain .node:hover{border-color:var(--ink2)}
+.chain .node b{display:block;font-size:14px} .chain .node span{font:12px ui-monospace,Menlo,monospace;color:var(--ink2)}
+.chain .arr{font-size:12px;color:var(--ink2);text-align:center;line-height:1.3;min-width:86px}
+.chain .arr::after{content:"⟶";display:block;font-size:18px;color:var(--muted)}
+.toc{columns:2;column-gap:28px;padding-left:20px;margin:8px 0} @media(max-width:700px){.toc{columns:1}}
+.toc li{break-inside:avoid;margin:2px 0} .toc a{color:var(--ink);text-decoration:none} .toc a:hover{text-decoration:underline}
+.toc .st{font-size:12px;color:var(--muted);margin-left:6px} .toc .st.ok{color:var(--good)} .toc .st.bad{color:var(--bad)}
+#chk-summary{display:inline-block;font-size:13px;padding:2px 10px;border-radius:12px;background:#ebfbee;color:var(--good)}
+#chk-summary.bad{background:#fff5f5;color:var(--bad)}
+.legend-dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin:0 3px 2px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>空间坐标系 · 交互讲解</h1>
+<p class="sub">从"一个点有两套坐标"讲起，一直讲到 C 臂（DiffDRR / GeoReg）和 R2-Gaussian 的相机。全部用简单形状，没有真实数据；每章都有能拖的东西和一道小题。</p>
+<p><span id="chk-summary">页面自检：计算中…</span>　<span class="hint">每章右上角的"自检"是打开页面时自动跑的数值断言（比如 RᵀR = I、两条代码路径落点一致），点开能看到每一条。</span></p>
+
+<div class="key"><b>全篇统一的约定</b><ul class="tight">
+<li>颜色：<b class="x">x 红</b>、<b class="y">y 绿</b>、<b class="z">z 蓝</b>；相机或局部坐标轴用同样颜色的浅色版。</li>
+<li>世界坐标：<b>z 朝上</b>，原点 = 体积中心 = C 臂旋转中心（DiffDRR 和 R2-Gaussian 碰巧都是这样）。</li>
+<li>矩阵默认是"列向量"写法：新点 = M · 旧点。只有第 10 章会专门讲"存成转置、行向量"的写法。</li>
+<li>3D 视图：左键拖动旋转视角，右键拖动平移，滚轮缩放。视角怎么转都不改变任何坐标数值。</li>
+</ul></div>
+
+<h3>整条链一张图</h3>
+<p>一个体素的值最后变成探测器上一个像素，中间要换四次坐标。点方框跳到对应章节。</p>
+<div class="chain">
+  <div class="node" data-go="ch5"><b>体素下标</b><span>(i, j, k)</span></div>
+  <div class="arr">affine<br>第 5 章</div>
+  <div class="node" data-go="ch6"><b>世界坐标</b><span>(x, y, z) mm</span></div>
+  <div class="arr">w2c<br>第 6·9·10 章</div>
+  <div class="node" data-go="ch6"><b>相机坐标</b><span>(x_c, y_c, z_c)</span></div>
+  <div class="arr">× DSD ⁄ z_c<br>第 7 章</div>
+  <div class="node" data-go="ch7"><b>探测器平面</b><span>(u, v) mm</span></div>
+  <div class="arr">÷ 像素间距<br>第 7 章</div>
+  <div class="node" data-go="ch7"><b>像素</b><span>(row, col)</span></div>
+</div>
+<p class="hint">反方向（像素 → 射线 → 沿射线采样体素）就是 DRR 的做法，在第 8 章。</p>
+
+<h3>目录</h3>
+<ol class="toc">
+  <li><a href="#ch1">坐标系是什么</a><span class="st" data-ch="1"></span></li>
+  <li><a href="#ch2">旋转矩阵：列就是新的坐标轴</a><span class="st" data-ch="2"></span></li>
+  <li><a href="#ch3">齐次坐标与 4×4：顺序、逆</a><span class="st" data-ch="3"></span></li>
+  <li><a href="#ch4">欧拉角：顺序决定结果</a><span class="st" data-ch="4"></span></li>
+  <li><a href="#ch5">体素下标 ↔ 世界坐标</a><span class="st" data-ch="5"></span></li>
+  <li><a href="#ch6">相机外参：c2w 与 w2c</a><span class="st" data-ch="6"></span></li>
+  <li><a href="#ch7">投影：相机坐标 → 像素</a><span class="st" data-ch="7"></span></li>
+  <li><a href="#ch8">反过来：像素 → 射线 → 体素</a><span class="st" data-ch="8"></span></li>
+  <li><a href="#ch9">C 臂（DiffDRR / GeoReg）</a><span class="st" data-ch="9"></span></li>
+  <li><a href="#ch10">R2-Gaussian 的相机与投影</a><span class="st" data-ch="10"></span></li>
+  <li><a href="#ch11">对照表与常见坑</a><span class="st" data-ch="11"></span></li>
+</ol>
+<script>
+'use strict';
+/* ===== K：全页共用的小工具。矩阵一律按"行优先的二维数组"存，列向量写法 M·p ===== */
+const K = {};
+(function () {
+const PI = Math.PI;
+K.PI = PI;
+K.deg = r => r * 180 / PI;
+K.rad = d => d * PI / 180;
+K.I = n => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+K.mul = (A, B) => A.map(row => B[0].map((_, j) => row.reduce((s, a, k) => s + a * B[k][j], 0)));
+K.mulN = (...Ms) => Ms.reduce((A, B) => K.mul(A, B));
+K.mv = (A, v) => A.map(row => row.reduce((s, a, k) => s + a * v[k], 0));
+K.T = A => A[0].map((_, j) => A.map(r => r[j]));
+K.Rx = a => { const c = Math.cos(a), s = Math.sin(a); return [[1, 0, 0], [0, c, -s], [0, s, c]]; };
+K.Ry = a => { const c = Math.cos(a), s = Math.sin(a); return [[c, 0, s], [0, 1, 0], [-s, 0, c]]; };
+K.Rz = a => { const c = Math.cos(a), s = Math.sin(a); return [[c, -s, 0], [s, c, 0], [0, 0, 1]]; };
+K.Raxis = (L, a) => (L === 'X' ? K.Rx(a) : L === 'Y' ? K.Ry(a) : K.Rz(a));
+K.R2 = a => { const c = Math.cos(a), s = Math.sin(a); return [[c, -s], [s, c]]; };
+K.Rt = (R, t) => { const n = R.length, M = K.I(n + 1); for (let i = 0; i < n; i++) { for (let j = 0; j < n; j++) M[i][j] = R[i][j]; M[i][n] = t[i]; } return M; };
+K.getR = M => M.slice(0, M.length - 1).map(r => r.slice(0, M.length - 1));
+K.getT = M => M.slice(0, M.length - 1).map(r => r[M.length - 1]);
+K.hom = (M, p) => { const q = K.mv(M, [...p, 1]); const w = q[q.length - 1]; return q.slice(0, -1).map(x => x / w); };
+K.inv = A => {
+  const n = A.length, E = K.I(n), M = A.map((r, i) => [...r, ...E[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    const d = M[c][c];
+    if (Math.abs(d) < 1e-14) throw new Error('singular matrix');
+    for (let j = 0; j < 2 * n; j++) M[c][j] /= d;
+    for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c]; if (f) for (let j = 0; j < 2 * n; j++) M[r][j] -= f * M[c][j]; }
+  }
+  return M.map(r => r.slice(n));
+};
+K.det3 = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+K.add = (a, b) => a.map((x, i) => x + b[i]);
+K.sub = (a, b) => a.map((x, i) => x - b[i]);
+K.scl = (a, s) => a.map(x => x * s);
+K.dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
+K.cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+K.norm = a => Math.sqrt(K.dot(a, a));
+K.unit = a => K.scl(a, 1 / K.norm(a));
+K.col = (M, j) => M.map(r => r[j]);
+K.fromCols = (...cs) => cs[0].map((_, i) => cs.map(c => c[i]));
+K.axisAngle = (u, a) => {
+  const [x, y, z] = K.unit(u), c = Math.cos(a), s = Math.sin(a), C = 1 - c;
+  return [[c + x * x * C, x * y * C - z * s, x * z * C + y * s], [y * x * C + z * s, c + y * y * C, y * z * C - x * s], [z * x * C - y * s, z * y * C + x * s, c + z * z * C]];
+};
+K.maxDiff = (A, B) => { const a = [A].flat(3), b = [B].flat(3); let m = 0; a.forEach((x, i) => { m = Math.max(m, Math.abs(x - b[i])); }); return m; };
+K.fmt = (x, d = 2) => {
+  if (typeof x !== 'number' || !isFinite(x)) return String(x);
+  let s = x.toFixed(d);
+  if (/^-0(\.0*)?$/.test(s)) s = s.slice(1);
+  return s.replace('-', '−');
+};
+K.vec = (v, d = 2) => '(' + v.map(x => K.fmt(x, d)).join(', ') + ')';
+K.clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+let seed = 20260916;
+K.rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+K.randIn = (a, b) => a + (b - a) * K.rand();
+
+/* ---------- 颜色 ---------- */
+K.CX = 0xe03131; K.CY = 0x2f9e44; K.CZ = 0x1c7ed6; K.CT = 0x6c6b66;
+K.CXs = 0xff8787; K.CYs = 0x8ce99a; K.CZs = 0x74c0fc;
+K.AXC = [K.CX, K.CY, K.CZ]; K.AXCs = [K.CXs, K.CYs, K.CZs];
+K.css = { x: '#e03131', y: '#2f9e44', z: '#1c7ed6', t: '#6c6b66', xs: '#ff8787', ys: '#69db7c', zs: '#74c0fc', acc: '#f08c00', acc2: '#7048e8', acc3: '#0c8599', ink: '#1b1b1a', ink2: '#55544f', line: '#e5e4df', muted: '#8a8984' };
+
+/* ---------- DOM ---------- */
+K.$ = (sel, root) => (root || document).querySelector(sel);
+K.h = (tag, attrs, html) => {
+  const e = document.createElement(tag);
+  for (const k in (attrs || {})) { if (k === 'class') e.className = attrs[k]; else if (k === 'style') e.style.cssText = attrs[k]; else e.setAttribute(k, attrs[k]); }
+  if (html != null) e.innerHTML = html;
+  return e;
+};
+K.slider = (parent, o) => {
+  const row = K.h('label', { class: 'sl' });
+  const inp = K.h('input', { type: 'range', min: o.min, max: o.max, step: o.step == null ? 1 : o.step });
+  inp.value = o.value;
+  const out = K.h('output', { class: 'sl-val' });
+  row.append(K.h('span', { class: 'sl-name' }, o.label), inp, out);
+  parent.append(row);
+  const fmt = o.fmt || (v => K.fmt(v, o.digits == null ? 0 : o.digits) + (o.unit || ''));
+  const show = () => { out.textContent = fmt(+inp.value); };
+  inp.addEventListener('input', () => { show(); if (o.oninput) o.oninput(+inp.value); });
+  show();
+  return { el: row, input: inp, get: () => +inp.value, set(v, fire) { inp.value = v; show(); if (fire !== false && o.oninput) o.oninput(+inp.value); } };
+};
+K.seg = (parent, o) => {
+  if (o.label) parent.append(K.h('div', { class: 'seg-label' }, o.label));
+  const wrap = K.h('div', { class: 'seg' });
+  let cur = o.value;
+  const btns = o.options.map(op => {
+    const b = K.h('button', { type: 'button' }, op.label);
+    b.onclick = () => { cur = op.value; paint(); if (o.onchange) o.onchange(cur); };
+    wrap.append(b);
+    return [op.value, b];
+  });
+  const paint = () => btns.forEach(([v, b]) => b.classList.toggle('on', v === cur));
+  paint();
+  parent.append(wrap);
+  return { get: () => cur, set(v, fire) { cur = v; paint(); if (fire !== false && o.onchange) o.onchange(cur); } };
+};
+K.toggle = (parent, o) => {
+  const lab = K.h('label', { class: 'tg' });
+  const inp = K.h('input', { type: 'checkbox' });
+  inp.checked = !!o.value;
+  lab.append(inp, document.createTextNode(o.label));
+  inp.addEventListener('change', () => { if (o.onchange) o.onchange(inp.checked); });
+  parent.append(lab);
+  return { get: () => inp.checked, set(v, fire) { inp.checked = !!v; if (fire !== false && o.onchange) o.onchange(inp.checked); } };
+};
+K.button = (parent, label, onclick, cls) => { const b = K.h('button', { type: 'button', class: 'btn ' + (cls || '') }, label); b.onclick = onclick; parent.append(b); return b; };
+
+/* 矩阵：colClass 给每列上色（'ax-x' 等），name/foot 是上下的说明 */
+K.matHTML = (M, o) => {
+  o = o || {};
+  const d = o.digits == null ? 2 : o.digits, cols = M[0].length;
+  let h = `<div class="mat" style="grid-template-columns:repeat(${cols},auto)">`;
+  M.forEach((row, i) => row.forEach((v, j) => {
+    const cls = [(o.colClass && o.colClass[j]) || '', (o.dimRow && o.dimRow === i + 1) ? 'dim' : ''].join(' ');
+    h += `<span class="${cls}" data-c="${j}" data-r="${i}">${typeof v === 'number' ? K.fmt(v, d) : v}</span>`;
+  }));
+  h += '</div>';
+  return `<div class="matwrap">${o.name ? `<div class="mat-name">${o.name}</div>` : ''}${h}${o.foot ? `<div class="mat-foot">${o.foot}</div>` : ''}</div>`;
+};
+K.AXCLS3 = ['ax-x', 'ax-y', 'ax-z'];
+K.AXCLS4 = ['ax-x', 'ax-y', 'ax-z', 'ax-t'];
+/* 鼠标停在矩阵某一列上：整列高亮，并回调列号（离开时回调 -1） */
+K.hoverCols = (el, cb) => {
+  el.addEventListener('mouseover', e => {
+    const s = e.target.closest('.mat span'); if (!s) return;
+    const mat = s.parentElement, c = s.dataset.c;
+    mat.querySelectorAll('span').forEach(x => x.classList.toggle('hl', x.dataset.c === c));
+    cb(+c, mat);
+  });
+  el.addEventListener('mouseout', e => {
+    const s = e.target.closest('.mat span'); if (!s) return;
+    if (e.relatedTarget && s.parentElement.contains(e.relatedTarget)) return;
+    s.parentElement.querySelectorAll('span').forEach(x => x.classList.remove('hl'));
+    cb(-1, s.parentElement);
+  });
+};
+
+/* ---------- 自检 ---------- */
+K.checks = [];
+K.addCheck = (ch, name, fn) => K.checks.push({ ch: String(ch), name, fn });
+K.runChecks = () => {
+  const by = {};
+  for (const c of K.checks) {
+    let r;
+    try { r = c.fn(); } catch (e) { r = { ok: false, detail: String(e) }; }
+    if (typeof r === 'boolean') r = { ok: r };
+    (by[c.ch] = by[c.ch] || []).push(Object.assign({ name: c.name }, r));
+  }
+  let good = 0, all = 0;
+  for (const ch in by) {
+    const list = by[ch], ok = list.filter(x => x.ok).length;
+    good += ok; all += list.length;
+    document.querySelectorAll(`details.chk[data-ch="${ch}"]`).forEach(el => {
+      el.classList.toggle('bad', ok < list.length);
+      el.innerHTML = `<summary><b>${ok === list.length ? '自检通过' : '自检有失败'} ${ok}/${list.length}</b> ▾</summary><ul>` +
+        list.map(x => `<li class="${x.ok ? 'ok' : 'no'}">${x.ok ? '✓' : '✗'} ${x.name}${x.detail ? `<span>${x.detail}</span>` : ''}</li>`).join('') + '</ul>';
+    });
+    document.querySelectorAll(`.toc .st[data-ch="${ch}"]`).forEach(el => { el.textContent = `自检 ${ok}/${list.length}`; el.className = 'st ' + (ok === list.length ? 'ok' : 'bad'); });
+  }
+  const s = document.getElementById('chk-summary');
+  if (s) { s.textContent = `页面自检：${good}/${all} 条通过`; s.classList.toggle('bad', good < all); }
+  if (good < all) console.warn('self-check failures', by);
+};
+
+/* ---------- 小题 ---------- */
+K.quiz = (parent, o) => {
+  const box = K.h('div', { class: 'quiz' });
+  box.append(K.h('div', { class: 'quiz-q' }, '试一试　' + o.q));
+  const opts = K.h('div', { class: 'quiz-opts' }), fb = K.h('div', { class: 'quiz-fb' });
+  o.options.forEach((t, i) => {
+    const b = K.h('button', { type: 'button' }, t);
+    b.onclick = () => {
+      b.classList.add(i === o.answer ? 'right' : 'wrong');
+      if (i === o.answer) fb.innerHTML = '<b style="color:var(--good)">对。</b>' + (o.explain || '');
+      else {
+        fb.innerHTML = '<b style="color:var(--bad)">不对，再想想。</b> ';
+        const r = K.h('button', { type: 'button', class: 'btn' }, '看解析');
+        r.onclick = () => { fb.innerHTML = `正确答案：<b>${o.options[o.answer]}</b>。` + (o.explain || ''); };
+        fb.append(r);
+      }
+    };
+    opts.append(b);
+  });
+  box.append(opts, fb);
+  parent.append(box);
+  return box;
+};
+
+/* ---------- 懒加载 ---------- */
+K.lazy = (el, fn) => {
+  el.classList.add('v3d');
+  if (!('IntersectionObserver' in window)) { fn(); return; }
+  let done = false;
+  const io = new IntersectionObserver(es => {
+    if (!done && es.some(e => e.isIntersecting)) { done = true; io.disconnect(); try { fn(); } catch (err) { console.error(err); el.insertAdjacentHTML('beforeend', `<div class="nothree">初始化失败：${err}</div>`); } }
+  }, { rootMargin: '400px' });
+  io.observe(el);
+};
+
+/* ---------- SVG 平面 ---------- */
+K.SVGNS = 'http://www.w3.org/2000/svg';
+K.s = (tag, attrs, parent) => {
+  const e = document.createElementNS(K.SVGNS, tag);
+  for (const k in (attrs || {})) e.setAttribute(k, attrs[k]);
+  if (parent) parent.append(e);
+  return e;
+};
+/* 世界坐标 (x 向右, y 向上) ↔ SVG 像素；带网格与坐标轴 */
+K.plane = (host, o) => {
+  const W = o.W || 560, H = o.H || 420, [x0, x1] = o.xr, [y0, y1] = o.yr;
+  const svg = K.s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'plane' });
+  host.append(svg);
+  const X = x => (x - x0) / (x1 - x0) * W, Y = y => (y1 - y) / (y1 - y0) * H;
+  const P = ([x, y]) => [X(x), Y(y)];
+  const unX = sx => x0 + sx / W * (x1 - x0), unY = sy => y1 - sy / H * (y1 - y0);
+  const gGrid = K.s('g', {}, svg);
+  if (o.grid !== false) {
+    for (let x = Math.ceil(x0); x <= x1; x++) K.s('line', { x1: X(x), y1: 0, x2: X(x), y2: H, stroke: x === 0 ? '#c9c8c2' : '#efeee9', 'stroke-width': 1 }, gGrid);
+    for (let y = Math.ceil(y0); y <= y1; y++) K.s('line', { x1: 0, y1: Y(y), x2: W, y2: Y(y), stroke: y === 0 ? '#c9c8c2' : '#efeee9', 'stroke-width': 1 }, gGrid);
+  }
+  const toWorld = evt => {
+    const pt = svg.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY;
+    const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+    return [unX(q.x), unY(q.y)];
+  };
+  const drag = (el, onMove) => {
+    el.classList.add('drag');
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault(); el.setPointerCapture(e.pointerId);
+      const mv = ev => onMove(toWorld(ev));
+      const up = () => { el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+      el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    });
+  };
+  return { svg, X, Y, P, W, H, toWorld, drag, layer: () => K.s('g', {}, svg) };
+};
+/* 2D 箭头（世界坐标） */
+K.arrow2 = (g, a, b, color, o) => {
+  o = o || {};
+  const [ax, ay] = a, [bx, by] = b, dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+  if (L < 1e-6) return;
+  const hs = Math.min(o.head || 9, L * 0.45), ux = dx / L, uy = dy / L;
+  const hx = bx - ux * hs, hy = by - uy * hs;
+  K.s('line', { x1: ax, y1: ay, x2: hx, y2: hy, stroke: color, 'stroke-width': o.w || 2.2, 'stroke-dasharray': o.dash || '', opacity: o.op || 1 }, g);
+  K.s('path', { d: `M${bx},${by} L${hx - uy * hs * 0.45},${hy + ux * hs * 0.45} L${hx + uy * hs * 0.45},${hy - ux * hs * 0.45} Z`, fill: color, opacity: o.op || 1 }, g);
+};
+K.text2 = (g, x, y, t, o) => { o = o || {}; const e = K.s('text', { x, y, fill: o.color || K.css.ink, 'text-anchor': o.anchor || 'start', 'font-weight': o.bold ? 700 : 400, 'font-size': o.size || 12 }, g); e.textContent = t; return e; };
+/* F 形轮廓（局部坐标） */
+K.F2 = [[0, 0], [0.4, 0], [0.4, 1.1], [1.2, 1.1], [1.2, 1.5], [0.4, 1.5], [0.4, 2.0], [1.6, 2.0], [1.6, 2.4], [0, 2.4]];
+})();
+
+</script>
+<script>
+'use strict';
+/* ===== 3D 小工具（three.js 只负责画；显示的数字全部由 K 的矩阵函数算） ===== */
+(function () {
+K.hasThree = () => typeof THREE !== 'undefined' && !!THREE.OrbitControls;
+
+K.view3d = (host, o) => {
+  o = o || {};
+  host.classList.add('v3d');
+  if (o.height) host.style.height = o.height + 'px';
+  if (!K.hasThree()) { host.innerHTML = '<div class="nothree">3D 需要联网加载 three.js，这次没有加载成功。文字、矩阵数字和 2D 图不受影响。</div>'; return null; }
+  const W = () => Math.max(50, host.clientWidth), H = () => Math.max(50, host.clientHeight);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setSize(W(), H());
+  renderer.setClearColor(o.bg == null ? 0xf7f7f4 : o.bg);
+  host.append(renderer.domElement);
+  const camera = new THREE.PerspectiveCamera(o.fov || 38, W() / H(), o.near || 0.05, o.far || 50000);
+  camera.up.set(0, 0, 1);
+  camera.position.set(...(o.cam || [4, -6, 3]));
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x9a9a9a, 0.95));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.55); dl.position.set(0.6, -1, 1.6); scene.add(dl);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(...(o.target || [0, 0, 0]));
+  controls.update();
+  const layer = K.h('div', { class: 'lbl-layer' }); host.append(layer);
+  const labels = [];
+  let pending = false;
+  const v = {
+    scene, camera, renderer, controls, host,
+    label(text, pos, cls) {
+      const el = K.h('div', { class: 'lbl ' + (cls || '') }, text);
+      layer.append(el);
+      const L = { el, pos: new THREE.Vector3(...pos), show: true, set(p) { L.pos.set(...p); }, text(t) { el.innerHTML = t; } };
+      labels.push(L);
+      return L;
+    },
+    render() {
+      renderer.render(scene, camera);
+      const w = W(), h = H();
+      for (const L of labels) {
+        const p = L.pos.clone().project(camera);
+        const vis = L.show && p.z < 1 && p.z > -1 && (!L.obj || L.obj.visible);
+        L.el.style.display = vis ? '' : 'none';
+        if (vis) L.el.style.transform = `translate(${((p.x + 1) / 2 * w).toFixed(1)}px,${((1 - p.y) / 2 * h).toFixed(1)}px) translate(-50%,-50%)`;
+      }
+    },
+    req() { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; v.render(); }); },
+  };
+  controls.addEventListener('change', v.req);
+  if ('ResizeObserver' in window) new ResizeObserver(() => { renderer.setSize(W(), H()); camera.aspect = W() / H(); camera.updateProjectionMatrix(); v.req(); }).observe(host);
+  v.req();
+  return v;
+};
+
+/* 箭头：圆柱 + 圆锥；setArrow 按起终点摆放 */
+K.arrow = (color, o) => {
+  o = o || {};
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0, transparent: o.opacity != null, opacity: o.opacity == null ? 1 : o.opacity });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 12), mat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 18), mat);
+  g.add(shaft, head);
+  g.userData = { shaft, head, mat, r: o.r || 0.02 };
+  return g;
+};
+K.setArrow = (g, from, to, r) => {
+  r = r || g.userData.r;
+  const a = new THREE.Vector3(...from), d = new THREE.Vector3(...to).sub(a), len = d.length();
+  if (len < 1e-9) { g.visible = false; return; }
+  g.visible = true;
+  const hl = Math.min(len * 0.4, r * 6.5), sl = len - hl, { shaft, head } = g.userData;
+  shaft.scale.set(r, Math.max(sl, 1e-6), r); shaft.position.set(0, sl / 2, 0);
+  head.scale.set(r * 2.5, hl, r * 2.5); head.position.set(0, sl + hl / 2, 0);
+  g.position.copy(a);
+  g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+};
+/* 一组坐标轴（3 根箭头 + 标签）。M 是 4×4：前三列是轴方向，第 4 列是原点 */
+K.frame = (v, len, o) => {
+  o = o || {};
+  const cols = o.soft ? K.AXCs : K.AXC, r = o.r || len * 0.022;
+  const arrows = [0, 1, 2].map(i => { const a = K.arrow(cols[i], { r, opacity: o.opacity }); v.scene.add(a); return a; });
+  const names = o.names || ['x', 'y', 'z'];
+  const labels = o.noLabel ? [] : [0, 1, 2].map(i => v.label(names[i], [0, 0, 0], 'ax' + i + (o.soft ? ' soft' : '')));
+  const api = {
+    arrows, labels, M: K.I(4),
+    set(M) {
+      api.M = M;
+      const R = K.getR(M), t = K.getT(M);
+      [0, 1, 2].forEach(i => {
+        const tip = K.add(t, K.scl(K.col(R, i), len));
+        K.setArrow(arrows[i], t, tip, r);
+        if (labels[i]) labels[i].set(K.add(t, K.scl(K.col(R, i), len * 1.12)));
+      });
+    },
+    visible(b) { arrows.forEach(a => { a.visible = b; }); labels.forEach(l => { l.show = b; }); },
+    emphasize(i) { arrows.forEach((a, k) => { const s = (i === k) ? 1.9 : 1; a.userData.shaft.scale.x = a.userData.shaft.scale.z = r * s; a.userData.head.scale.x = a.userData.head.scale.z = r * 2.5 * s; }); },
+  };
+  api.set(o.M || K.I(4));
+  return api;
+};
+K.worldAxes = (v, len, o) => K.frame(v, len, Object.assign({ names: ['x', 'y', 'z'] }, o || {}));
+
+K.line = (v, pts, color, o) => {
+  o = o || {};
+  const geo = new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(...p)));
+  const mat = o.dash ? new THREE.LineDashedMaterial({ color, dashSize: o.dash, gapSize: o.dash * 0.7, transparent: true, opacity: o.opacity == null ? 1 : o.opacity })
+    : new THREE.LineBasicMaterial({ color, transparent: true, opacity: o.opacity == null ? 1 : o.opacity });
+  const ln = new THREE.Line(geo, mat);
+  if (o.dash) ln.computeLineDistances();
+  v.scene.add(ln);
+  ln.userData.set = ps => { ln.geometry.setFromPoints(ps.map(p => new THREE.Vector3(...p))); if (o.dash) ln.computeLineDistances(); };
+  return ln;
+};
+K.ball = (v, p, r, color, o) => {
+  o = o || {};
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), new THREE.MeshStandardMaterial({ color, roughness: 0.5, transparent: o.opacity != null, opacity: o.opacity == null ? 1 : o.opacity, depthWrite: o.opacity == null }));
+  m.position.set(...p);
+  v.scene.add(m);
+  return m;
+};
+/* 由 4 个角点组成的四边形（可贴图） */
+K.quad = (v, color, o) => {
+  o = o || {};
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(new Array(18).fill(0), 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0], 2));
+  const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: o.opacity == null ? 0.35 : o.opacity, map: o.map || null, depthWrite: false });
+  const mesh = new THREE.Mesh(geo, mat);
+  const edge = K.line(v, [[0, 0, 0], [0, 0, 0]], o.edge || 0x444444);
+  v.scene.add(mesh);
+  mesh.userData.set = c => { // c = [TL, TR, BR, BL]
+    const [a, b, cc, d] = c, arr = [...a, ...b, ...cc, ...a, ...cc, ...d];
+    geo.attributes.position.array.set(arr); geo.attributes.position.needsUpdate = true; geo.computeBoundingSphere();
+    edge.userData.set([a, b, cc, d, a]);
+  };
+  mesh.userData.edge = edge;
+  return mesh;
+};
+K.setMatrix = (obj, M) => {
+  obj.matrixAutoUpdate = false;
+  obj.matrix.set(M[0][0], M[0][1], M[0][2], M[0][3], M[1][0], M[1][1], M[1][2], M[1][3], M[2][0], M[2][1], M[2][2], M[2][3], 0, 0, 0, 1);
+  obj.matrixWorldNeedsUpdate = true;
+};
+/* 3D 的 F 形积木（局部坐标：竖杠在 x∈[0,0.4]，高 2.4，厚 0.3） */
+K.fBlock = (color, o) => {
+  o = o || {};
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, transparent: o.opacity != null, opacity: o.opacity == null ? 1 : o.opacity, depthWrite: o.opacity == null });
+  const box = (x0, x1, y0, y1) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, 0.3), mat);
+    m.position.set((x0 + x1) / 2, (y0 + y1) / 2, 0);
+    g.add(m);
+    const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: o.opacity == null ? 0.5 : 0.2 }));
+    e.position.copy(m.position); g.add(e);
+  };
+  box(0, 0.4, 0, 2.4); box(0.4, 1.6, 2.0, 2.4); box(0.4, 1.2, 1.1, 1.5);
+  return g;
+};
+
+/* ===== 模拟"头"：几个球。密度相加，内球取负数做出颅骨壳 ===== */
+K.PHANTOM = [
+  { c: [0, 0, 0], r: 90, rho: 1.0 },
+  { c: [0, 0, 0], r: 82, rho: -0.86 },
+  { c: [0, 52, -8], r: 16, rho: 1.6, name: 'A', color: 0xf08c00 },
+  { c: [52, 0, 8], r: 13, rho: 1.9, name: 'R', color: 0x7048e8 },
+  { c: [0, -12, 52], r: 11, rho: 2.2, name: 'S', color: 0x0c8599 },
+];
+K.MARKERS = K.PHANTOM.filter(s => s.name);
+K.lineIntegral = (o, d) => { // d 必须是单位向量；返回 Σ 密度 × 弦长
+  let s = 0;
+  for (const sp of K.PHANTOM) {
+    const oc = K.sub(sp.c, o), tca = K.dot(oc, d), d2 = K.dot(oc, oc) - tca * tca, r2 = sp.r * sp.r;
+    if (d2 < r2) s += sp.rho * 2 * Math.sqrt(r2 - d2);
+  }
+  return s;
+};
+K.densityAt = p => K.PHANTOM.reduce((s, sp) => s + (K.norm(K.sub(p, sp.c)) <= sp.r ? sp.rho : 0), 0);
+K.addPhantom = (v, o) => {
+  o = o || {};
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(90, 32, 20), new THREE.MeshBasicMaterial({ color: 0x9a9890, wireframe: true, transparent: true, opacity: 0.16 }));
+  v.scene.add(shell);
+  const balls = K.MARKERS.map(m => K.ball(v, m.c, m.r, m.color, { opacity: 0.9 }));
+  if (o.labels !== false) K.MARKERS.forEach(m => v.label(m.name, K.add(m.c, [0, 0, m.r + 9]), 'soft'));
+  return { shell, balls };
+};
+/* 灰度图：值越大越亮。cam = {c2w, W, H, du, dv, dsd, parallel, flipX} ，OpenCV 相机（x 右 y 下 z 朝前） */
+K.drrCV = (canvas, cam, k) => {
+  const { W, H } = cam;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d'), img = ctx.createImageData(W, H);
+  const R = K.getR(cam.c2w), C = K.getT(cam.c2w), xc = K.col(R, 0), yc = K.col(R, 1), zc = K.col(R, 2);
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+    const xd = (c - (W - 1) / 2) * cam.du, yd = (r - (H - 1) / 2) * cam.dv;
+    let org, dir;
+    if (cam.parallel) { org = K.add(C, K.add(K.scl(xc, xd), K.scl(yc, yd))); dir = zc; }
+    else { org = C; dir = K.unit(K.add(K.add(K.scl(xc, xd), K.scl(yc, yd)), K.scl(zc, cam.dsd))); }
+    K.putGray(img, W, r, cam.flipX ? W - 1 - c : c, K.lineIntegral(org, dir), k);
+  }
+  ctx.putImageData(img, 0, 0);
+};
+K.putGray = (img, W, r, c, val, k) => {
+  const g = 18 + 232 * (1 - Math.exp(-(k || 0.011) * Math.max(0, val))), i = (r * W + c) * 4;
+  img.data[i] = img.data[i + 1] = img.data[i + 2] = g; img.data[i + 3] = 255;
+};
+/* 看向原点的 OpenCV 相机：方位角 az（从 +x 往 +y 转）、仰角 el、距离 d */
+K.lookAtCV = (C, target, up) => {
+  const z = K.unit(K.sub(target || [0, 0, 0], C));
+  let x = K.cross(z, up || [0, 0, 1]);
+  if (K.norm(x) < 1e-9) x = [1, 0, 0];
+  x = K.unit(x);
+  const y = K.cross(z, x);
+  return K.Rt(K.fromCols(x, y, z), C);
+};
+K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) * Math.sin(az), d * Math.sin(el)];
+})();
+
+</script>
+<section class="ch" id="ch1">
+<div class="ch-head"><span class="ch-num">第 1 章</span><h2>坐标系是什么</h2><details class="chk" data-ch="1"><summary>自检…</summary></details></div>
+<p>坐标系 = <b>一个原点 + 几根有方向的轴 + 单位长度</b>。坐标不是点本身的属性，而是"从某个原点出发，沿这几根轴各走几步能到这个点"。换一个坐标系，同一个点的数字就变了，点本身一动没动。</p>
+<p>下图有两个坐标系：固定的<b>世界坐标系</b>（深色 x、y），和一个可以拖动、旋转的<b>局部坐标系</b>（浅色 x′、y′）。蓝色的 F 是"钉"在局部坐标系上的，跟着它走。</p>
+<div class="widget">
+  <div class="stage"><div id="c1-stage"></div><div class="stage-foot">拖白色圆圈 = 平移局部原点 O′；拖 x′ 轴尖上的红点 = 旋转；拖橙色点 P = 换一个点看坐标。</div></div>
+  <div class="panel" id="c1-panel"></div>
+</div>
+<div class="key"><b>这一章只需要记住一个式子：</b>局部坐标 p′ → 世界坐标 p 是 <b>p = R · p′ + t</b>。
+<ul class="tight"><li><b>R 的每一列</b> = 一根局部轴在世界里的方向（第 1 列是 x′，第 2 列是 y′）。</li>
+<li><b>t</b> = 局部原点 O′ 在世界里的位置。</li>
+<li>反过来 p′ = Rᵀ · (p − t)：先减掉原点，再用转置"转回去"。</li></ul>
+后面的 affine（体素 → 世界）、c2w（相机 → 世界）全都是这个形状，只是从 2 维变成 3 维。</div>
+<div id="c1-quiz"></div>
+</section>
+<script>
+(function () {
+  const stage = document.getElementById('c1-stage'), panel = document.getElementById('c1-panel');
+  const pl = K.plane(stage, { W: 600, H: 450, xr: [-4, 8], yr: [-3, 6] });
+  const { X, Y, P } = pl;
+  const st = { th: K.rad(30), t: [2, 0.5], grid: true };
+  const toW = q => K.add(K.mv(K.R2(st.th), q), st.t);
+  const toL = p => K.mv(K.T(K.R2(st.th)), K.sub(p, st.t));
+  st.p = toW([1.6, 2.4]);
+  const line = (g, a, b, color, o) => { o = o || {}; return K.s('line', { x1: X(a[0]), y1: Y(a[1]), x2: X(b[0]), y2: Y(b[1]), stroke: color, 'stroke-width': o.w || 1, 'stroke-dasharray': o.dash || '' }, g); };
+  const gGrid = pl.layer(), gW = pl.layer(), gF = pl.layer(), gProj = pl.layer(), gL = pl.layer(), gH = pl.layer();
+  K.arrow2(gW, P([-4, 0]), P([7.85, 0]), K.css.x, { w: 1.8 });
+  K.arrow2(gW, P([0, -3]), P([0, 5.85]), K.css.y, { w: 1.8 });
+  K.text2(gW, X(7.6), Y(0) + 17, 'x (world)', { color: K.css.x, bold: 1, anchor: 'end' });
+  K.text2(gW, X(0) + 8, Y(5.55), 'y (world)', { color: K.css.y, bold: 1 });
+  K.text2(gW, X(0) - 6, Y(0) + 16, 'O', { anchor: 'end', color: K.css.ink2, bold: 1 });
+
+  const hO = K.s('circle', { r: 8, fill: '#fff', stroke: K.css.ink, 'stroke-width': 2 }, gH);
+  const hR = K.s('circle', { r: 7, fill: '#ffc9c9', stroke: K.css.x, 'stroke-width': 2 }, gH);
+  const hP = K.s('circle', { r: 7, fill: K.css.acc, stroke: '#fff', 'stroke-width': 2 }, gH);
+  const lO = K.text2(gH, 0, 0, "O'", { bold: 1 }), lP = K.text2(gH, 0, 0, 'P', { bold: 1, color: '#d9480f' });
+
+  const read = K.h('div', { class: 'read' });
+  let sTh, sTx, sTy;
+  sTh = K.slider(panel, { label: '旋转 θ', min: -180, max: 180, step: 1, value: 30, unit: '°', oninput: v => { st.th = K.rad(v); draw(); } });
+  sTx = K.slider(panel, { label: 'O′ 的 x（tₓ）', min: -3, max: 7, step: 0.1, value: 2, digits: 1, oninput: v => { st.t = [v, st.t[1]]; draw(); } });
+  sTy = K.slider(panel, { label: 'O′ 的 y（t_y）', min: -2, max: 5, step: 0.1, value: 0.5, digits: 1, oninput: v => { st.t = [st.t[0], v]; draw(); } });
+  K.toggle(panel, { label: '画出局部网格', value: true, onchange: b => { st.grid = b; draw(); } });
+  K.button(panel, 'P 放回 F 的右上角', () => { st.p = toW([1.6, 2.4]); draw(); });
+  K.button(panel, '两个坐标系重合', () => { st.th = 0; st.t = [0, 0]; sTh.set(0, false); sTx.set(0, false); sTy.set(0, false); draw(); });
+  panel.append(read);
+
+  pl.drag(hO, w => { st.t = [K.clamp(+w[0].toFixed(1), -3, 7), K.clamp(+w[1].toFixed(1), -2, 5)]; sTx.set(st.t[0], false); sTy.set(st.t[1], false); draw(); });
+  pl.drag(hR, w => { st.th = K.rad(Math.round(K.deg(Math.atan2(w[1] - st.t[1], w[0] - st.t[0])))); sTh.set(Math.round(K.deg(st.th)), false); draw(); });
+  pl.drag(hP, w => { st.p = [K.clamp(w[0], -3.9, 7.9), K.clamp(w[1], -2.9, 5.9)]; draw(); });
+
+  const pad = (v, n) => K.fmt(v, 2).padStart(n || 6);
+  function draw() {
+    [gGrid, gF, gProj, gL].forEach(g => g.replaceChildren());
+    const R = K.R2(st.th), t = st.t, q = toL(st.p);
+    if (st.grid) for (let k = -8; k <= 10; k++) { line(gGrid, toW([k, -8]), toW([k, 10]), '#e9e4fb'); line(gGrid, toW([-8, k]), toW([10, k]), '#e9e4fb'); }
+    const pts = K.F2.map(a => P(toW(a)).join(','));
+    K.s('path', { d: 'M' + pts.join(' L') + ' Z', fill: 'rgba(28,126,214,0.14)', stroke: K.css.z, 'stroke-width': 1.6 }, gF);
+    // P 的两套"走法"
+    line(gProj, [st.p[0], 0], st.p, '#bdbcb6', { dash: '3 4' }); line(gProj, [0, st.p[1]], st.p, '#bdbcb6', { dash: '3 4' });
+    line(gProj, toW([q[0], 0]), st.p, '#f59f00', { dash: '5 4', w: 1.5 }); line(gProj, toW([0, q[1]]), st.p, '#f59f00', { dash: '5 4', w: 1.5 });
+    K.arrow2(gL, P(t), P(toW([2.2, 0])), K.css.xs, { w: 3 });
+    K.arrow2(gL, P(t), P(toW([0, 2.2])), K.css.ys, { w: 3 });
+    const lx = P(toW([2.55, 0])), ly = P(toW([0, 2.55]));
+    K.text2(gL, lx[0], lx[1] + 4, "x'", { color: K.css.x, bold: 1, anchor: 'middle' });
+    K.text2(gL, ly[0], ly[1] + 4, "y'", { color: K.css.y, bold: 1, anchor: 'middle' });
+    const po = P(t), pr = P(toW([2.2, 0])), pp = P(st.p);
+    hO.setAttribute('cx', po[0]); hO.setAttribute('cy', po[1]);
+    hR.setAttribute('cx', pr[0]); hR.setAttribute('cy', pr[1]);
+    hP.setAttribute('cx', pp[0]); hP.setAttribute('cy', pp[1]);
+    lO.setAttribute('x', po[0] - 22); lO.setAttribute('y', po[1] + 20);
+    lP.setAttribute('x', pp[0] + 10); lP.setAttribute('y', pp[1] - 10);
+    const c = Math.cos(st.th), s = Math.sin(st.th);
+    read.innerHTML =
+      `<h4>同一个点 P 的两套坐标</h4>世界坐标　p  = ${K.vec(st.p)}<br>局部坐标　p′ = ${K.vec(q)}` +
+      `<h4>局部 → 世界：p = R · p′ + t</h4><div class="eq">` +
+      `⎡${pad(st.p[0])}⎤   ⎡${pad(c, 5)} ${pad(-s, 5)}⎤ ⎡${pad(q[0])}⎤   ⎡${pad(t[0], 5)}⎤\n` +
+      `⎣${pad(st.p[1])}⎦ = ⎣${pad(s, 5)} ${pad(c, 5)}⎦ ⎣${pad(q[1])}⎦ + ⎣${pad(t[1], 5)}⎦</div>` +
+      `<span class="cx">R 第 1 列 ${K.vec([c, s])}</span> = x′ 轴在世界里的方向；<span class="cy">第 2 列 ${K.vec([-s, c])}</span> = y′ 轴。` +
+      `<h4>世界 → 局部：p′ = Rᵀ · (p − t)</h4><div class="eq">p − t = ${K.vec(K.sub(st.p, t))}\nRᵀ(p − t) = ${K.vec(q)}</div>` +
+      `<span class="hint">橙色虚线：从 O′ 出发沿 x′ 走 ${K.fmt(q[0])} 步、沿 y′ 走 ${K.fmt(q[1])} 步；灰色虚线：从 O 出发沿 x、y 走。</span>`;
+  }
+  draw();
+
+  K.quiz(document.getElementById('c1-quiz'), {
+    q: '局部坐标系转了 θ = 90°，原点在 t = (2, 0)。局部坐标 (1, 0) 的点，世界坐标是多少？',
+    options: ['(3, 0)', '(2, 1)', '(1, 2)', '(2, −1)'], answer: 1,
+    explain: 'R 的第 1 列是 (cos 90°, sin 90°) = (0, 1)，所以 R·(1, 0) = (0, 1)，再加 t 得 (2, 1)。在上面把 θ 拖到 90°、O′ 拖到 (2, 0) 就能看到。'
+  });
+  K.addCheck(1, 'p = R·(Rᵀ(p − t)) + t（随机 200 组）', () => {
+    let m = 0;
+    for (let i = 0; i < 200; i++) {
+      const R = K.R2(K.randIn(-3.2, 3.2)), t = [K.randIn(-5, 5), K.randIn(-5, 5)], p = [K.randIn(-9, 9), K.randIn(-9, 9)];
+      m = Math.max(m, K.maxDiff(K.add(K.mv(R, K.mv(K.T(R), K.sub(p, t))), t), p));
+    }
+    return { ok: m < 1e-12, detail: `最大误差 ${m.toExponential(1)}` };
+  });
+  K.addCheck(1, '旋转矩阵两列长度为 1 且互相垂直', () => {
+    const R = K.R2(0.7), a = K.col(R, 0), b = K.col(R, 1);
+    return Math.abs(K.norm(a) - 1) < 1e-12 && Math.abs(K.norm(b) - 1) < 1e-12 && Math.abs(K.dot(a, b)) < 1e-12;
+  });
+})();
+</script>
+
+<section class="ch" id="ch2">
+<div class="ch-head"><span class="ch-num">第 2 章</span><h2>旋转矩阵：列就是新的坐标轴</h2><details class="chk" data-ch="2"><summary>自检…</summary></details></div>
+<p>到 3D 还是同一件事。一个 3×3 旋转矩阵 R 不用背公式，只要会读它的<b>三列</b>：第 1 列是物体自己的 x′ 轴转完以后在世界里指向哪，第 2、3 列是 y′、z′。</p>
+<p>所以"矩阵乘一个点"其实就是：<b>R · (a, b, c) = a × 第 1 列 + b × 第 2 列 + c × 第 3 列</b>——沿着三根新轴依次走 a、b、c 步。右边打开"分解"，3D 里会画出这三段路。</p>
+<div class="widget">
+  <div class="stage"><div id="c2-view"></div><div class="stage-foot">深色长箭头 = 世界轴；浅色短箭头 = 积木自己的轴 x′ y′ z′。鼠标停在右边矩阵的某一列上，对应的轴会变粗。</div></div>
+  <div class="panel" id="c2-panel"></div>
+</div>
+<div class="key"><b>要点</b><ul class="tight">
+<li>R 的列 = 旋转后的坐标轴。三列长度都是 1、两两垂直，所以 <b>RᵀR = I</b>，<b>R⁻¹ = Rᵀ</b>：求逆只要转置。</li>
+<li><b>det R = +1</b> 是纯旋转；把某一列取反，det 变成 −1，物体就被镜像了（F 会变成反的 F）。第 5 章 affine 的行列式带负号，说的就是这件事。</li>
+</ul></div>
+<div id="c2-quiz"></div>
+</section>
+<script>
+(function () {
+  const panel = document.getElementById('c2-panel'), host = document.getElementById('c2-view');
+  const st = { axis: 'z', ang: 40, mirror: false, dec: true };
+  const P1 = [1.6, 2.4, 0.15];
+  const axisVec = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1], d: [1, 1, 1] };
+  const M3 = () => { const R = K.axisAngle(axisVec[st.axis], K.rad(st.ang)); return st.mirror ? K.mul(R, [[-1, 0, 0], [0, 1, 0], [0, 0, 1]]) : R; };
+
+  K.seg(panel, { label: '绕哪根世界轴转', value: 'z', options: [{ value: 'x', label: 'x' }, { value: 'y', label: 'y' }, { value: 'z', label: 'z' }, { value: 'd', label: '(1,1,1) 斜轴' }], onchange: a => { st.axis = a; update(); } });
+  K.slider(panel, { label: '角度', min: -180, max: 180, value: 40, unit: '°', oninput: a => { st.ang = a; update(); } });
+  K.toggle(panel, { label: '把第 1 列取反（镜像）', value: false, onchange: b => { st.mirror = b; update(); } });
+  K.toggle(panel, { label: '分解 R·p′ 为三段', value: true, onchange: b => { st.dec = b; update(); } });
+  const read = K.h('div'); panel.append(read);
+  const info = K.h('div', { class: 'hint' }, '把鼠标停在矩阵 R 的某一列上。'); panel.append(info);
+
+  let v = null, fr, fb, decA, pBall, rotAxis;
+  K.lazy(host, () => {
+    v = K.view3d(host, { cam: [3.6, -5.8, 3.4], target: [0.6, 0.9, 0.6] });
+    if (!v) return;
+    K.worldAxes(v, 2.8, { r: 0.022 });
+    fb = K.fBlock(0x74c0fc, { opacity: 0.85 }); v.scene.add(fb);
+    fr = K.frame(v, 1.7, { soft: true, names: ["x'", "y'", "z'"], r: 0.034 });
+    decA = [K.arrow(K.CX, { r: 0.02 }), K.arrow(K.CY, { r: 0.02 }), K.arrow(K.CZ, { r: 0.02 })];
+    decA.forEach(a => v.scene.add(a));
+    pBall = K.ball(v, [0, 0, 0], 0.07, 0xf08c00);
+    rotAxis = K.line(v, [[0, 0, 0], [0, 0, 1]], 0x999999, { dash: 0.12 });
+    update();
+  });
+
+  K.hoverCols(read, (c, mat) => {
+    if (!mat.closest('[data-m="R"]')) return;
+    if (fr) { fr.emphasize(c); v.req(); }
+    const R = M3();
+    info.innerHTML = c < 0 ? '把鼠标停在矩阵 R 的某一列上。' : `R 的第 ${c + 1} 列 ${K.vec(K.col(R, c))} = 积木的 <b class="${'xyz'[c]}">${'xyz'[c]}′</b> 轴现在在世界里指的方向。`;
+  });
+
+  function update() {
+    const R = M3(), p = K.mv(R, P1), c = [0, 1, 2].map(j => K.col(R, j));
+    const RtR = K.mul(K.T(R), R), det = K.det3(R);
+    if (v) {
+      K.setMatrix(fb, K.Rt(R, [0, 0, 0]));
+      fr.set(K.Rt(R, [0, 0, 0]));
+      const a1 = K.scl(c[0], P1[0]), a2 = K.add(a1, K.scl(c[1], P1[1]));
+      K.setArrow(decA[0], [0, 0, 0], a1); K.setArrow(decA[1], a1, a2); K.setArrow(decA[2], a2, p);
+      decA.forEach(a => { a.visible = st.dec && a.visible; });
+      pBall.position.set(...p); pBall.visible = st.dec;
+      const u = K.scl(K.unit(axisVec[st.axis]), 3.2);
+      rotAxis.userData.set([K.scl(u, -1), u]);
+      v.req();
+    }
+    read.innerHTML =
+      `<div data-m="R">${K.matHTML(R, { name: 'R（每列一种颜色）', colClass: K.AXCLS3, digits: 3, foot: '列 1 = x′　列 2 = y′　列 3 = z′' })}</div>` +
+      K.matHTML(RtR, { name: 'RᵀR', digits: 3, foot: det > 0 ? '单位矩阵 → 列两两垂直、长度 1' : '仍是单位矩阵：镜像也保长度和角度' }) +
+      `<div class="read">det R = <b style="color:${det > 0 ? 'var(--good)' : 'var(--bad)'}">${K.fmt(det, 3)}</b>${det < 0 ? '　← 负号 = 镜像' : ''}</div>` +
+      (st.dec ? `<h4>R · p′，p′ = ${K.vec(P1, 2)}（积木右上角）</h4><div class="eq">` +
+        `= ${K.fmt(P1[0], 2)} × <span class="cx">${K.vec(c[0])}</span>\n+ ${K.fmt(P1[1], 2)} × <span class="cy">${K.vec(c[1])}</span>\n+ ${K.fmt(P1[2], 2)} × <span class="cz">${K.vec(c[2])}</span>\n= ${K.vec(p)}　← 橙色小球</div>` : '');
+  }
+  update();
+
+  K.quiz(document.getElementById('c2-quiz'), {
+    q: '绕世界 z 轴转 90° 以后，积木自己的 x′ 轴指向世界的哪个方向？',
+    options: ['+x', '+y', '−x', '−y'], answer: 1,
+    explain: 'Rz(90°) 的第 1 列是 (cos 90°, sin 90°, 0) = (0, 1, 0)，即 +y。把上面的轴选 z、角度拖到 90° 验证。'
+  });
+  K.addCheck(2, '任意轴角的 R 满足 RᵀR = I 且 det = 1', () => {
+    let m = 0;
+    for (let i = 0; i < 100; i++) { const R = K.axisAngle([K.randIn(-1, 1), K.randIn(-1, 1), K.randIn(-1, 1)], K.randIn(-3, 3)); m = Math.max(m, K.maxDiff(K.mul(K.T(R), R), K.I(3)), Math.abs(K.det3(R) - 1)); }
+    return { ok: m < 1e-12, detail: `最大误差 ${m.toExponential(1)}` };
+  });
+  K.addCheck(2, 'R·e_j 恰好等于 R 的第 j 列', () => { const R = K.axisAngle([1, 2, 3], 1.1); return [0, 1, 2].every(j => K.maxDiff(K.mv(R, K.I(3)[j]), K.col(R, j)) < 1e-15); });
+  K.addCheck(2, '取反一列后 det = −1', () => Math.abs(K.det3(K.mul(K.Rz(0.3), [[-1, 0, 0], [0, 1, 0], [0, 0, 1]])) + 1) < 1e-12);
+})();
+</script>
+
+<section class="ch" id="ch3">
+<div class="ch-head"><span class="ch-num">第 3 章</span><h2>齐次坐标与 4×4：顺序、逆</h2><details class="chk" data-ch="3"><summary>自检…</summary></details></div>
+<p>p = R·p′ + t 有个麻烦：旋转是乘法，平移是加法，两个变换一串起来公式就乱。<b>齐次坐标</b>的办法是给点补一个 1：(x, y) 写成 (x, y, 1)，把 R 和 t 拼成一个大矩阵</p>
+<div class="eq">⎡R  t⎤ ⎡p′⎤   ⎡R·p′ + t⎤
+⎣0  1⎦ ⎣1 ⎦ = ⎣   1    ⎦</div>
+<p>那个 1 把平移"带"出来。这样<b>连续做几个变换 = 矩阵连乘</b>，求逆 = 求矩阵的逆。2D 用 3×3，3D 用 4×4，道理完全一样；为了看得清楚，这一章用 2D。</p>
+<div class="tabs" id="c3-tabs"></div>
+<div class="tabbody"><div class="widget" style="margin:0">
+  <div class="stage"><div id="c3-stage"></div><div class="stage-foot" id="c3-foot"></div></div>
+  <div class="panel" id="c3-panel"></div>
+</div></div>
+<div class="key"><b>要点</b><ul class="tight">
+<li><b>从右往左读</b>：p_final = B · A · p 表示先做 A 再做 B。换顺序通常结果不同。</li>
+<li>复合变换的平移列是 <b>R₂·t₁ + t₂</b>，不是 t₁ + t₂。只在 R₂ 是单位阵时两者碰巧一样，所以这个 bug 在"没转角度"的测试里根本发现不了。</li>
+<li>刚体变换的逆是 <b>[Rᵀ, −Rᵀ·t]</b>，不是 [Rᵀ, −t]。第 6 章 w2c 的第 4 列就是 −Rᵀ·t。</li>
+</ul></div>
+<div id="c3-quiz"></div>
+</section>
+<script>
+(function () {
+  const pl = K.plane(document.getElementById('c3-stage'), { W: 600, H: 450, xr: [-5, 7], yr: [-4, 5] });
+  const { X, Y, P } = pl, panel = document.getElementById('c3-panel'), foot = document.getElementById('c3-foot');
+  const gAx = pl.layer(), gD = pl.layer();
+  K.arrow2(gAx, P([-5, 0]), P([6.85, 0]), '#c9c8c2', { w: 1.4 }); K.arrow2(gAx, P([0, -4]), P([0, 4.85]), '#c9c8c2', { w: 1.4 });
+  K.text2(gAx, X(6.7), Y(0) + 16, 'x', { color: K.css.x, bold: 1, anchor: 'end' }); K.text2(gAx, X(0) + 8, Y(4.6), 'y', { color: K.css.y, bold: 1 });
+  const H = (a, t) => K.Rt(K.R2(K.rad(a)), t);
+  const Hm = (R, t) => K.Rt(R, t);
+  const drawF = (M, o) => {
+    const pts = K.F2.map(q => P(K.hom(M, q)).join(','));
+    K.s('path', { d: 'M' + pts.join(' L') + ' Z', fill: o.fill || 'none', stroke: o.stroke, 'stroke-width': o.w || 1.6, 'stroke-dasharray': o.dash || '', opacity: o.op || 1 }, gD);
+    const c = P(K.hom(M, [0, 0]));
+    K.s('circle', { cx: c[0], cy: c[1], r: 4, fill: o.stroke, opacity: o.op || 1 }, gD);
+    if (o.label) K.text2(gD, c[0] + 7, c[1] + 16, o.label, { color: o.stroke, bold: 1 });
+    return K.hom(M, [0, 0]);
+  };
+  const via = (a, b, c) => { K.arrow2(gD, P(a), P(b), '#adb5bd', { w: 1.3, dash: '4 3', head: 7 }); if (c) K.arrow2(gD, P(b), P(c), '#868e96', { w: 1.3, dash: '4 3', head: 7 }); };
+  const M3 = (M, name, foot) => K.matHTML(M, { name, digits: 2, colClass: ['', '', 'ax-t'], dimRow: 3, foot });
+
+  const st = { tab: 'order', a: 60, b: [3, 1], mode: 'BA', a1: 30, t1: [3, 0], a2: 50, t2: [0, 1], ai: 50, ti: [3, 1.5] };
+  const tabs = document.getElementById('c3-tabs');
+  const tabDefs = [['order', '① 顺序'], ['bug', '② 平移直接相加的 bug'], ['inv', '③ 逆矩阵']];
+  const tabBtns = tabDefs.map(([k, l]) => { const b = K.h('button', { type: 'button' }, l); b.onclick = () => { st.tab = k; build(); }; tabs.append(b); return [k, b]; });
+  const read = K.h('div');
+
+  function build() {
+    tabBtns.forEach(([k, b]) => b.classList.toggle('on', k === st.tab));
+    panel.replaceChildren();
+    if (st.tab === 'order') {
+      K.seg(panel, { label: '顺序', value: st.mode, options: [{ value: 'BA', label: '先 A 后 B　→ B·A' }, { value: 'AB', label: '先 B 后 A　→ A·B' }], onchange: m => { st.mode = m; draw(); } });
+      K.slider(panel, { label: 'A：绕原点转', min: -180, max: 180, value: st.a, unit: '°', oninput: x => { st.a = x; draw(); } });
+      K.slider(panel, { label: 'B：平移 x', min: -4, max: 5, step: 0.1, value: st.b[0], digits: 1, oninput: x => { st.b = [x, st.b[1]]; draw(); } });
+      K.slider(panel, { label: 'B：平移 y', min: -3, max: 4, step: 0.1, value: st.b[1], digits: 1, oninput: x => { st.b = [st.b[0], x]; draw(); } });
+      foot.textContent = '灰色虚线 = 原始 F；浅色 = 做完第一步；蓝色 = 做完两步。小圆点是 F 自己的原点，灰色箭头是它走过的路。';
+    } else if (st.tab === 'bug') {
+      K.slider(panel, { label: 'T₁ 旋转', min: -180, max: 180, value: st.a1, unit: '°', oninput: x => { st.a1 = x; draw(); } });
+      K.slider(panel, { label: 'T₁ 平移 x', min: -4, max: 5, step: 0.1, value: st.t1[0], digits: 1, oninput: x => { st.t1 = [x, 0]; draw(); } });
+      K.slider(panel, { label: 'T₂ 旋转', min: -180, max: 180, value: st.a2, unit: '°', oninput: x => { st.a2 = x; draw(); } });
+      K.button(panel, '把 T₂ 旋转拖到 0°', () => { st.a2 = 0; build(); });
+      foot.textContent = '蓝色 = 正确的 T₂·T₁；红色虚线 = 把平移直接相加的错误版本。T₂ 旋转为 0° 时两者重合，bug 完全看不出来。';
+    } else {
+      K.slider(panel, { label: 'T 旋转', min: -180, max: 180, value: st.ai, unit: '°', oninput: x => { st.ai = x; draw(); } });
+      K.slider(panel, { label: 'T 平移 x', min: -4, max: 5, step: 0.1, value: st.ti[0], digits: 1, oninput: x => { st.ti = [x, st.ti[1]]; draw(); } });
+      K.slider(panel, { label: 'T 平移 y', min: -3, max: 4, step: 0.1, value: st.ti[1], digits: 1, oninput: x => { st.ti = [st.ti[0], x]; draw(); } });
+      foot.textContent = '蓝色 = 原始 F；绿色 = T·F；深色虚线 = 正确的逆把它送回原位；红色虚线 = 错误的逆 [Rᵀ, −t]。';
+    }
+    panel.append(read);
+    draw();
+  }
+
+  function draw() {
+    gD.replaceChildren();
+    const I3 = K.I(3);
+    if (st.tab === 'order') {
+      const A = H(st.a, [0, 0]), B = H(0, st.b);
+      const first = st.mode === 'BA' ? A : B, fin = st.mode === 'BA' ? K.mul(B, A) : K.mul(A, B);
+      const o0 = drawF(I3, { stroke: '#adb5bd', dash: '4 3' });
+      const o1 = drawF(first, { stroke: '#74c0fc', fill: 'rgba(116,192,252,0.12)', label: st.mode === 'BA' ? 'A·p' : 'B·p' });
+      const o2 = drawF(fin, { stroke: K.css.z, fill: 'rgba(28,126,214,0.2)', w: 2, label: st.mode === 'BA' ? 'B·A·p' : 'A·B·p' });
+      via(o0, o1, o2);
+      const tt = K.getT(fin);
+      read.innerHTML = M3(A, 'A（旋转）') + M3(B, 'B（平移）') + M3(fin, st.mode === 'BA' ? '合起来 B·A' : '合起来 A·B', '灰色是恒为 0 0 1 的最后一行') +
+        `<div class="eq">p_final = ${st.mode === 'BA' ? 'B · A' : 'A · B'} · p　（从右往左：先 ${st.mode === 'BA' ? 'A 后 B' : 'B 后 A'}）</div>` +
+        (st.mode === 'BA' ? `平移列 = ${K.vec(tt)} = B 的平移原样保留：<b>先转后移</b>，平移不受旋转影响。`
+          : `平移列 = ${K.vec(tt)} = R·b：<b>先移后转</b>，连平移向量 ${K.vec(st.b)} 也被转了 ${st.a}°。`);
+    } else if (st.tab === 'bug') {
+      const R1 = K.R2(K.rad(st.a1)), R2 = K.R2(K.rad(st.a2)), T1 = Hm(R1, st.t1), T2 = Hm(R2, st.t2);
+      const good = K.mul(T2, T1), bad = Hm(K.mul(R2, R1), K.add(st.t1, st.t2));
+      const o0 = drawF(I3, { stroke: '#adb5bd', dash: '4 3' });
+      const o1 = drawF(T1, { stroke: '#74c0fc', label: 'T₁·p' });
+      const og = drawF(good, { stroke: K.css.z, fill: 'rgba(28,126,214,0.2)', w: 2, label: 'correct' });
+      const ob = drawF(bad, { stroke: K.css.x, dash: '6 4', w: 2, label: 'wrong' });
+      via(o0, o1, og);
+      const gap = K.norm(K.sub(og, ob));
+      read.innerHTML = M3(good, '正确：T₂·T₁') + M3(bad, '错误：平移相加') +
+        `<div class="eq">正确  t = R₂·t₁ + t₂ = ${K.vec(K.mv(R2, st.t1))} + ${K.vec(st.t2)} = ${K.vec(K.getT(good))}\n错误  t = t₁ + t₂    = ${K.vec(st.t1)} + ${K.vec(st.t2)} = ${K.vec(K.getT(bad))}</div>` +
+        `两者相差 <b style="color:${gap > 1e-9 ? 'var(--bad)' : 'var(--good)'}">${K.fmt(gap, 3)}</b> 个单位${gap < 1e-9 ? '——T₂ 没有旋转，bug 被藏住了' : ''}。在 mm 为单位的配准里，这就是"代码能跑、图也能出、只是整体偏了几十毫米"。`;
+    } else {
+      const R = K.R2(K.rad(st.ai)), T = Hm(R, st.ti), Ti = Hm(K.T(R), K.scl(K.mv(K.T(R), st.ti), -1)), W = Hm(K.T(R), K.scl(st.ti, -1));
+      drawF(I3, { stroke: K.css.z, fill: 'rgba(28,126,214,0.18)', w: 2, label: 'p' });
+      drawF(T, { stroke: K.css.y, fill: 'rgba(47,158,68,0.12)', label: 'T·p' });
+      drawF(K.mul(Ti, T), { stroke: K.css.ink, dash: '3 3', w: 1.4 });
+      drawF(K.mul(W, T), { stroke: K.css.x, dash: '6 4', w: 1.8, label: 'wrong inverse' });
+      read.innerHTML = M3(T, 'T') + M3(Ti, 'T⁻¹ = [Rᵀ, −Rᵀt]') + M3(K.mul(T, Ti), 'T·T⁻¹', '= 单位阵') +
+        `<div class="eq">−Rᵀ·t = ${K.vec(K.getT(Ti))}\n错误的 −t = ${K.vec(K.scl(st.ti, -1))}</div>` +
+        `为什么是 −Rᵀt：逆变换要先把平移减掉、再转回去，即 Rᵀ(p − t) = Rᵀp − Rᵀt。`;
+    }
+  }
+  build();
+
+  K.quiz(document.getElementById('c3-quiz'), {
+    q: '先平移 (2, 0)，再绕原点转 90°。原点 (0, 0) 最后在哪？',
+    options: ['(2, 0)', '(0, 2)', '(−2, 0)', '(2, 2)'], answer: 1,
+    explain: '先平移到 (2, 0)，再绕原点转 90° 到 (0, 2)。矩阵写成 A·B（B 平移在右边先做）。在 ① 里选"先 B 后 A"、转 90°、平移 (2, 0) 就能看到。'
+  });
+  K.addCheck(3, '(B·A)·p = B·(A·p)（随机 200 组）', () => {
+    let m = 0;
+    for (let i = 0; i < 200; i++) { const A = K.Rt(K.R2(K.randIn(-3, 3)), [K.randIn(-4, 4), K.randIn(-4, 4)]), B = K.Rt(K.R2(K.randIn(-3, 3)), [K.randIn(-4, 4), K.randIn(-4, 4)]), p = [K.randIn(-5, 5), K.randIn(-5, 5)]; m = Math.max(m, K.maxDiff(K.hom(K.mul(B, A), p), K.hom(B, K.hom(A, p)))); }
+    return { ok: m < 1e-12, detail: `最大误差 ${m.toExponential(1)}` };
+  });
+  K.addCheck(3, '[Rᵀ, −Rᵀt] 确实是逆', () => { const R = K.R2(0.9), t = [2, -1], T = K.Rt(R, t), Ti = K.Rt(K.T(R), K.scl(K.mv(K.T(R), t), -1)); return K.maxDiff(K.mul(T, Ti), K.I(3)) < 1e-12; });
+  K.addCheck(3, '平移相加的错误版本：R₂ ≠ I 时偏，R₂ = I 时不偏', () => {
+    const t1 = [3, 0], R2a = K.R2(0.8), R2b = K.I(2);
+    return K.norm(K.sub(K.mv(R2a, t1), t1)) > 0.1 && K.norm(K.sub(K.mv(R2b, t1), t1)) < 1e-15;
+  });
+})();
+</script>
+
+<section class="ch" id="ch4">
+<div class="ch-head"><span class="ch-num">第 4 章</span><h2>欧拉角：顺序决定结果</h2><details class="chk" data-ch="4"><summary>自检…</summary></details></div>
+<p>用三个角度描述旋转，就是依次绕三根轴各转一次，再把三个矩阵乘起来。麻烦有两个：<b>乘的顺序</b>不同，结果不同；而且同一串矩阵有<b>两种读法</b>。</p>
+<ul class="tight">
+<li><b>外旋</b>：每一步都绕<b>世界</b>的固定轴转。R = Rz(α)·Ry(β)·Rx(γ) 读作"先绕世界 X 转 γ，再绕世界 Y 转 β，最后绕世界 Z 转 α"（从右往左）。</li>
+<li><b>内旋</b>：每一步绕<b>物体自己当前的</b>轴转。同一个 R 读作"先绕 z 转 α，再绕新的 y′ 转 β，最后绕更新后的 x″ 转 γ"（从左往右）。</li>
+</ul>
+<p>两种读法落到<b>同一个姿态</b>。下面点"分步播放"，黄色粗箭头标出每一步绕的那根轴。</p>
+<div class="widget">
+  <div class="stage"><div id="c4-view"></div><div class="stage-foot">蓝色积木 = 当前顺序的结果；半透明灰色积木 = 换成另一种顺序的结果。黄色粗箭头 = 播放时正在绕的轴。</div></div>
+  <div class="panel" id="c4-panel"></div>
+</div>
+<div class="key"><b>对到代码</b><ul class="tight">
+<li><b>DiffDRR</b>：<code>convert(rot, tra, parameterization="euler_angles", convention="ZYX")</code> 算的正是 R = Rz(rot[0])·Ry(rot[1])·Rx(rot[2])。GeoReg 用 rot = [主角度, 0, 副角度]，所以 R = Rz(主)·Rx(副)。</li>
+<li><b>R2-Gaussian</b>：<code>angle2pose</code> 里写着 "rotate … (fixed axis)"，是外旋：rot = R3·R2·R1，先 R1 后 R3。第 10 章会分步播放它。</li>
+<li><b>万向锁</b>：ZYX 且 β = ±90° 时，α 和 γ 绕的变成同一根轴，只剩它们的差有意义，少了一个自由度。优化器在这附近会很难受。</li>
+</ul></div>
+<div id="c4-quiz"></div>
+</section>
+<script>
+(function () {
+  const panel = document.getElementById('c4-panel'), host = document.getElementById('c4-view');
+  const E = { X: [1, 0, 0], Y: [0, 1, 0], Z: [0, 0, 1] };
+  const st = { a: 50, b: 30, g: 40, conv: 'ZYX', ghost: true, mode: 'ext', anim: null };
+  const lettersOf = c => c.split('');
+  const angOf = L => K.rad(L === 'Z' ? st.a : L === 'Y' ? st.b : st.g);
+  const Rconv = c => K.mulN(...lettersOf(c).map(L => K.Raxis(L, angOf(L))));
+  const other = () => (st.conv === 'ZYX' ? 'XYZ' : 'ZYX');
+  const wrap = x => ((x + 540) % 360) - 180;
+
+  const sA = K.slider(panel, { label: 'α（绕 Z）', min: -180, max: 180, value: st.a, unit: '°', oninput: x => { st.a = x; stop(); update(); } });
+  const sB = K.slider(panel, { label: 'β（绕 Y）', min: -90, max: 90, value: st.b, unit: '°', oninput: x => { st.b = x; stop(); update(); } });
+  const sG = K.slider(panel, { label: 'γ（绕 X）', min: -180, max: 180, value: st.g, unit: '°', oninput: x => { st.g = x; stop(); update(); } });
+  const sConv = K.seg(panel, { label: '乘法顺序', value: 'ZYX', options: [{ value: 'ZYX', label: 'ZYX：Rz·Ry·Rx（DiffDRR）' }, { value: 'XYZ', label: 'XYZ：Rx·Ry·Rz' }], onchange: c => { st.conv = c; stop(); update(); } });
+  K.toggle(panel, { label: '显示另一种顺序的结果', value: true, onchange: b => { st.ghost = b; update(); } });
+  K.seg(panel, { label: '分步播放的读法', value: 'ext', options: [{ value: 'ext', label: '外旋（绕世界轴）' }, { value: 'int', label: '内旋（绕自己的轴）' }], onchange: m => { st.mode = m; } });
+  K.button(panel, '▶ 分步播放', () => play(), 'primary');
+  K.button(panel, 'β = 90°（万向锁）', () => { st.conv = 'ZYX'; sConv.set('ZYX', false); sB.set(90); });
+  K.button(panel, 'α、γ 同时 +30°', () => { sA.set(wrap(st.a + 30), false); sG.set(wrap(st.g + 30), false); st.a = sA.get(); st.g = sG.get(); stop(); update(); });
+  const cap = K.h('div', { class: 'eq', style: 'white-space:normal' }, '拖动三个角度，或者点"分步播放"。');
+  const read = K.h('div');
+  panel.append(cap, read);
+
+  let v = null, fb, ghost, fr, hlA;
+  K.lazy(host, () => {
+    v = K.view3d(host, { cam: [4.2, -6.8, 3.8], target: [0.6, 0.8, 0.8] });
+    if (!v) return;
+    K.worldAxes(v, 2.9, { r: 0.022 });
+    fb = K.fBlock(0x74c0fc, { opacity: 0.9 }); v.scene.add(fb);
+    ghost = K.fBlock(0xadb5bd, { opacity: 0.28 }); v.scene.add(ghost);
+    fr = K.frame(v, 1.6, { soft: true, names: ["x'", "y'", "z'"], r: 0.032 });
+    hlA = K.arrow(0xfab005, { r: 0.05 }); v.scene.add(hlA); hlA.visible = false;
+    update();
+  });
+
+  function pose(R, axis) {
+    if (!v) return;
+    K.setMatrix(fb, K.Rt(R, [0, 0, 0])); fr.set(K.Rt(R, [0, 0, 0]));
+    K.setMatrix(ghost, K.Rt(Rconv(other()), [0, 0, 0])); ghost.visible = st.ghost && !st.anim;
+    if (axis) { K.setArrow(hlA, K.scl(axis, -3.1), K.scl(axis, 3.1), 0.05); hlA.visible = true; } else hlA.visible = false;
+    v.req();
+  }
+  function update() {
+    const R = Rconv(st.conv), Ro = Rconv(other()), L = lettersOf(st.conv);
+    pose(R, null);
+    const lock = st.conv === 'ZYX' && Math.abs(Math.abs(st.b) - 90) < 1e-9;
+    read.innerHTML = K.matHTML(R, { name: `R = R${L[0]}·R${L[1]}·R${L[2]}`, colClass: K.AXCLS3, digits: 3 }) +
+      K.matHTML(Ro, { name: `另一种顺序 ${other()}`, digits: 3, foot: `与当前最大相差 ${K.fmt(K.maxDiff(R, Ro), 3)}` }) +
+      (lock ? `<div class="warn" style="margin:6px 0">万向锁：现在 R 只取决于 γ − α = ${K.fmt(wrap(st.g - st.a), 0)}°。点"α、γ 同时 +30°"，积木纹丝不动。</div>` : '');
+  }
+  function stop() { if (st.anim) { cancelAnimationFrame(st.anim); st.anim = null; } }
+  function play() {
+    stop();
+    const L = lettersOf(st.conv), ang = L.map(angOf), ext = st.mode === 'ext';
+    const order = ext ? [2, 1, 0] : [0, 1, 2];
+    const t0 = performance.now(), dur = 1100, gap = 300;
+    const tick = now => {
+      const T = now - t0, k = Math.min(2, Math.floor(T / (dur + gap)));
+      const u = K.clamp((T - k * (dur + gap)) / dur, 0, 1), idx = order[k];
+      let before = K.I(3);
+      for (let j = 0; j < k; j++) { const m = K.Raxis(L[order[j]], ang[order[j]]); before = ext ? K.mul(m, before) : K.mul(before, m); }
+      const step = K.Raxis(L[idx], ang[idx] * u);
+      const R = ext ? K.mul(step, before) : K.mul(before, step);
+      const axis = ext ? E[L[idx]] : K.mv(before, E[L[idx]]);
+      pose(R, axis);
+      const nm = { Z: 'α', Y: 'β', X: 'γ' }[L[idx]];
+      cap.innerHTML = `第 ${k + 1} 步：绕<b>${ext ? '世界' : '积木自己的'}</b> ${L[idx]}${ext ? '' : '′'} 轴转 ${nm} = ${K.fmt(K.deg(ang[idx]) * u, 0)}°` +
+        `<br><span class="hint">矩阵累积：${ext ? '新的一步乘在左边' : '新的一步乘在右边'}</span>`;
+      if (T < 3 * dur + 2 * gap) st.anim = requestAnimationFrame(tick);
+      else { st.anim = null; pose(Rconv(st.conv), null); cap.innerHTML = `三步做完。${ext ? '外旋' : '内旋'}的读法停在 R${L[0]}·R${L[1]}·R${L[2]} 这个姿态。换另一种读法再播一次，终点完全一样。`; update(); }
+    };
+    st.anim = requestAnimationFrame(tick);
+  }
+  update();
+
+  K.quiz(document.getElementById('c4-quiz'), {
+    q: 'α = 90°、β = 0°、γ = 90°。ZYX 和 XYZ 两种顺序得到的姿态一样吗？',
+    options: ['一样', '不一样'], answer: 1,
+    explain: 'Rz(90°)·Rx(90°) ≠ Rx(90°)·Rz(90°)，矩阵乘法不能交换。上面把角度设好，灰色积木和蓝色积木明显不重合。'
+  });
+  const mulSeq = (L, a) => K.mulN(...L.map((l, i) => K.Raxis(l, a[i])));
+  K.addCheck(4, '外旋逐步累积 = 内旋逐步累积 = Rz·Ry·Rx（随机 100 组）', () => {
+    let m = 0;
+    for (let i = 0; i < 100; i++) {
+      const a = [K.randIn(-3, 3), K.randIn(-1.5, 1.5), K.randIn(-3, 3)], L = ['Z', 'Y', 'X'];
+      let ext = K.I(3); [2, 1, 0].forEach(j => { ext = K.mul(K.Raxis(L[j], a[j]), ext); });
+      let int = K.I(3); [0, 1, 2].forEach(j => { int = K.mul(int, K.Raxis(L[j], a[j])); });
+      m = Math.max(m, K.maxDiff(ext, mulSeq(L, a)), K.maxDiff(int, mulSeq(L, a)));
+    }
+    return { ok: m < 1e-12, detail: `最大误差 ${m.toExponential(1)}` };
+  });
+  K.addCheck(4, 'ZYX、β = 90° 时 α、γ 同加一个角度姿态不变', () => {
+    const R1 = mulSeq(['Z', 'Y', 'X'], [0.4, Math.PI / 2, 1.1]), R2 = mulSeq(['Z', 'Y', 'X'], [0.4 + 0.7, Math.PI / 2, 1.1 + 0.7]);
+    return { ok: K.maxDiff(R1, R2) < 1e-12, detail: `差 ${K.maxDiff(R1, R2).toExponential(1)}` };
+  });
+  K.addCheck(4, 'ZYX 与 XYZ 在 (90°, 0, 90°) 不同', () => K.maxDiff(K.mul(K.Rz(Math.PI / 2), K.Rx(Math.PI / 2)), K.mul(K.Rx(Math.PI / 2), K.Rz(Math.PI / 2))) > 0.5);
+})();
+</script>
+
+<section class="ch" id="ch5">
+<div class="ch-head"><span class="ch-num">第 5 章</span><h2>体素下标 ↔ 世界坐标</h2><details class="chk" data-ch="5"><summary>自检…</summary></details></div>
+<p>CT 体数据在文件里只是一个三维数组，下标 (i, j, k) 是整数，没有单位、也不知道头朝哪。把它放进世界里的，是 4×4 的 <b>affine</b>：</p>
+<div class="eq">[x, y, z, 1]ᵀ = A · [i, j, k, 1]ᵀ = i × 第1列 + j × 第2列 + k × 第3列 + 第4列</div>
+<p>和第 1 章一模一样：<b>前三列</b> = 下标每加 1 在世界里往哪走、走几毫米；<b>第 4 列</b> = 体素 (0, 0, 0) 的中心在世界里的位置。下面的格子是一个 5×6×3 的小体积，蓝色体素拼成一个 F（i 向右、j 向上时读起来是正的）。</p>
+<div class="widget">
+  <div class="stage"><div id="c5-view"></div><div class="stage-foot">点任意一个格子 = 选中这个体素，右边算它的世界坐标。红色小球是一个世界点，右边反算它的"连续下标"。</div></div>
+  <div class="panel" id="c5-panel"></div>
+</div>
+<div class="key"><b>要点</b><ul class="tight">
+<li><b>det</b>(A 的前 3×3) 的绝对值 = 一个体素的体积（mm³）；负号 = 下标坐标系相对世界是镜像的。</li>
+<li><b>方向码</b>（nibabel 的 <code>aff2axcodes</code>）说的是下标<b>增大</b>那一端朝哪：第 1 列是 (−20, 0, 0) → i 增大时往 −x 走 → 在 RAS 世界里 −x 是病人左侧 → 码是 <b>L</b>。</li>
+<li><b>canonicalize</b>（DiffDRR <code>read()</code> 默认做）只改第 4 列，把体积中心挪到世界原点；数组一个字节不动，前三列也不动。中心 = A·[(n−1)/2, 1]。</li>
+<li><b>下标顺序</b>：nibabel 读出来是 <code>arr[i, j, k]</code>；SimpleITK 和很多 CT 代码是 <code>arr[k, j, i]</code>。不少重建代码里的 <code>volume_shape</code> 也写成 (Z, Y, X)。同一个体素，两种写法下标顺序正好反过来。</li>
+</ul></div>
+<div id="c5-quiz"></div>
+</section>
+<script>
+(function () {
+  const panel = document.getElementById('c5-panel'), host = document.getElementById('c5-view');
+  const N = [5, 6, 3];
+  const FILL = [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [1, 5], [2, 5], [3, 5], [1, 3], [2, 3]];
+  const st = { d: [20, 20, 35], o: [30, -50, -40], mode: 'RAS', sel: [3, 5, 0], probe: [40, 10, 10], prevA: null };
+  const affine = () => { const s = st.mode === 'RAS' ? 1 : -1; return [[s * st.d[0], 0, 0, st.o[0]], [0, s * st.d[1], 0, st.o[1]], [0, 0, st.d[2], st.o[2]], [0, 0, 0, 1]]; };
+  const center = A => K.hom(A, N.map(n => (n - 1) / 2));
+  const codes = A => [0, 1, 2].map(j => { const c = K.col(K.getR(A), j), m = c.map(Math.abs).indexOf(Math.max(...c.map(Math.abs))); return [['L', 'R'], ['P', 'A'], ['I', 'S']][m][c[m] > 0 ? 1 : 0]; }).join('');
+
+  K.seg(panel, { label: '下标 i、j 增大时朝哪', value: 'RAS', options: [{ value: 'RAS', label: '朝 +x、+y' }, { value: 'LPS', label: '朝 −x、−y（常见于 DICOM 转来的数据）' }], onchange: m => { st.mode = m; st.prevA = null; update(); } });
+  const sd = ['x', 'y', 'z'].map((a, i) => K.slider(panel, { label: `体素间距 d${a}`, min: 5, max: 40, value: st.d[i], unit: ' mm', oninput: x => { st.d[i] = x; st.prevA = null; update(); } }));
+  const so = ['x', 'y', 'z'].map((a, i) => K.slider(panel, { label: `第 4 列 ${a}`, min: -150, max: 150, value: st.o[i], unit: ' mm', oninput: x => { st.o[i] = x; st.prevA = null; update(); } }));
+  K.button(panel, 'canonicalize：把体积中心挪到原点', () => canon(), 'primary');
+  const sp = ['x', 'y', 'z'].map((a, i) => K.slider(panel, { label: `红球世界 ${a}`, min: -150, max: 150, value: st.probe[i], unit: ' mm', oninput: x => { st.probe[i] = x; update(); } }));
+  const read = K.h('div'); panel.append(read);
+
+  let v = null, grid, selBox, nearBox, pick = [], idxFr, probeBall, orgBall, labOrg;
+  K.lazy(host, () => {
+    v = K.view3d(host, { cam: [260, -430, 260], target: [60, 0, 0], near: 1 });
+    if (!v) return;
+    K.worldAxes(v, 90, { r: 1.6 });
+    v.label('world origin', [0, 0, -12], 'soft');
+    grid = new THREE.Group(); v.scene.add(grid);
+    const unit = new THREE.BoxGeometry(1, 1, 1), edges = new THREE.EdgesGeometry(unit);
+    const eMat = new THREE.LineBasicMaterial({ color: 0x9a9890, transparent: true, opacity: 0.5 });
+    const pMat = new THREE.MeshBasicMaterial({ visible: false });
+    const fMat = new THREE.MeshStandardMaterial({ color: 0x4dabf7, transparent: true, opacity: 0.55, depthWrite: false });
+    for (let i = 0; i < N[0]; i++) for (let j = 0; j < N[1]; j++) for (let k = 0; k < N[2]; k++) {
+      const e = new THREE.LineSegments(edges, eMat); e.position.set(i, j, k); grid.add(e);
+      const p = new THREE.Mesh(unit, pMat); p.position.set(i, j, k); p.userData.ijk = [i, j, k]; grid.add(p); pick.push(p);
+    }
+    FILL.forEach(([i, j]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), fMat); m.position.set(i, j, 0); grid.add(m); });
+    selBox = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.06, 1.06, 1.06)), new THREE.LineBasicMaterial({ color: 0xf08c00 })); grid.add(selBox);
+    nearBox = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.1, 1.1, 1.1)), new THREE.LineBasicMaterial({ color: 0xe03131 })); grid.add(nearBox);
+    idxFr = K.frame(v, 1, { soft: true, names: ['i', 'j', 'k'], r: 1.5 });
+    probeBall = K.ball(v, st.probe, 4, 0xe03131);
+    orgBall = K.ball(v, [0, 0, 0], 3.2, 0x333333);
+    labOrg = v.label('voxel (0,0,0)', [0, 0, 0], 'soft');
+    let down = null;
+    v.renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+    v.renderer.domElement.addEventListener('pointerup', e => {
+      if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
+      const r = v.renderer.domElement.getBoundingClientRect();
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), v.camera);
+      const hit = ray.intersectObjects(pick, false)[0];
+      if (hit) { st.sel = hit.object.userData.ijk; update(); }
+    });
+    update();
+  });
+
+  function canon() {
+    const A0 = affine(), c = center(A0), from = st.o.slice(), to = K.sub(st.o, c), t0 = performance.now();
+    const step = now => {
+      const u = K.clamp((now - t0) / 700, 0, 1), e = u * u * (3 - 2 * u);
+      st.o = from.map((f, i) => f + (to[i] - f) * e);
+      so.forEach((s, i) => s.set(Math.round(st.o[i]), false));
+      update(A0);
+      if (u < 1) requestAnimationFrame(step); else { st.o = to; st.prevA = A0; update(A0); }
+    };
+    requestAnimationFrame(step);
+  }
+
+  function update(prev) {
+    const A = affine(), Ai = K.inv(A), c = center(A), R3 = K.getR(A);
+    const q = K.hom(Ai, st.probe), nr = q.map(Math.round), inside = nr.every((x, i) => x >= 0 && x < N[i]);
+    const w = K.hom(A, st.sel);
+    if (v) {
+      K.setMatrix(grid, A);
+      selBox.position.set(...st.sel);
+      nearBox.position.set(...nr); nearBox.visible = inside;
+      idxFr.set(K.Rt(K.fromCols(...[0, 1, 2].map(j => K.scl(K.col(R3, j), 1.8))), K.getT(A)));
+      probeBall.position.set(...st.probe);
+      orgBall.position.set(...K.getT(A)); labOrg.set(K.add(K.getT(A), [0, 0, 16]));
+      v.req();
+    }
+    const det = K.det3(R3), pa = st.prevA || prev;
+    const changed = pa ? A.map((row, i) => row.map((x, j) => Math.abs(x - pa[i][j]) > 1e-9)) : null;
+    let mat = K.matHTML(A, { name: 'affine A', colClass: K.AXCLS4, digits: 1, dimRow: 4, foot: '列 1/2/3：i/j/k 加 1 走多远　列 4：体素 (0,0,0) 的中心' });
+    if (st.prevA) mat += K.matHTML(st.prevA, { name: 'canonicalize 之前', digits: 1, dimRow: 4, foot: '只有第 4 列不同 ↑' });
+    read.innerHTML = mat +
+      `<h4>橙色体素 (i, j, k) = ${K.vec(st.sel, 0)} → 世界</h4><div class="eq">A·[${st.sel.join(', ')}, 1] = ${st.sel[0]}×${K.vec(K.col(R3, 0), 0)} + ${st.sel[1]}×${K.vec(K.col(R3, 1), 0)}\n              + ${st.sel[2]}×${K.vec(K.col(R3, 2), 0)} + ${K.vec(K.getT(A), 1)}\n              = ${K.vec(w, 1)} mm</div>` +
+      `<h4>红球 世界 ${K.vec(st.probe, 0)} → 下标</h4><div class="eq">A⁻¹·[x, y, z, 1] = ${K.vec(q, 2)}　（连续下标，不是整数 → 采样要插值）\n最近的体素 ${K.vec(nr, 0)}${inside ? '（红框）' : '（在体积外面）'}</div>` +
+      `<div class="read">det = ${K.fmt(det, 0)} mm³ = ${det > 0 ? '+' : '−'}${st.d.join(' × ')}${st.mode === 'LPS' ? '（x、y 各翻一次 = 绕 z 转 180°，不是镜像，所以仍为正）' : ''}　方向码 <b>${codes(A)}</b><br>体积中心 = A·[${N.map(n => (n - 1) / 2).join(', ')}, 1] = ${K.vec(c, 1)}<br>numpy：nibabel <code>arr[${st.sel.join(', ')}]</code>　SimpleITK <code>arr[${st.sel.slice().reverse().join(', ')}]</code></div>`;
+    if (changed && st.prevA) { /* 已在上面并排显示 */ }
+  }
+  update();
+
+  K.quiz(document.getElementById('c5-quiz'), {
+    q: 'affine 第 1 列是 (−0.5, 0, 0)。i 加 1 时世界 x 怎么变？方向码第一个字母是？',
+    options: ['x 加 0.5 mm，R', 'x 减 0.5 mm，L', 'x 减 0.5 mm，R', 'x 加 0.5 mm，L'], answer: 1,
+    explain: '第 1 列就是 i 加 1 时在世界里走的那一步 (−0.5, 0, 0)，所以 x 减 0.5 mm；朝 −x 走，RAS 里 −x 是 L。上面切到"朝 −x、−y"就能看到方向码变成 LPS。'
+  });
+  K.addCheck(5, 'A⁻¹·A·[i,j,k,1] 回到原下标（随机 100 组）', () => {
+    let m = 0;
+    for (let n = 0; n < 100; n++) { const A = [[K.randIn(-3, 3), 0.2, 0, K.randIn(-99, 99)], [0.1, K.randIn(-3, 3), 0, 5], [0, 0.3, K.randIn(0.5, 3), -7], [0, 0, 0, 1]], p = [K.randIn(0, 500), K.randIn(0, 500), K.randIn(0, 300)]; m = Math.max(m, K.maxDiff(K.hom(K.inv(A), K.hom(A, p)), p)); }
+    return { ok: m < 1e-8, detail: `最大误差 ${m.toExponential(1)}` };
+  });
+  K.addCheck(5, 'det 的绝对值 = dx·dy·dz，朝 −x、−y 时 det 仍为正、朝 −x 单独取反时为负', () => {
+    const d = K.det3([[-20, 0, 0], [0, -20, 0], [0, 0, 35]]), d1 = K.det3([[-20, 0, 0], [0, 20, 0], [0, 0, 35]]);
+    return Math.abs(d - 14000) < 1e-9 && Math.abs(d1 + 14000) < 1e-9;
+  });
+  K.addCheck(5, 'canonicalize 后中心在原点、前三列不变', () => {
+    const A = [[-20, 0, 0, 30], [0, -20, 0, -50], [0, 0, 35, -40], [0, 0, 0, 1]], c = center(A), B = A.map(r => r.slice());
+    [0, 1, 2].forEach(i => { B[i][3] -= c[i]; });
+    return K.norm(center(B)) < 1e-12 && K.maxDiff(K.getR(A), K.getR(B)) === 0;
+  });
+  K.addCheck(5, '朝 −x、−y 时方向码为 LPS', () => codes([[-20, 0, 0, 0], [0, -20, 0, 0], [0, 0, 35, 0], [0, 0, 0, 1]]) === 'LPS');
+})();
+</script>
+
+<section class="ch" id="ch6">
+<div class="ch-head"><span class="ch-num">第 6 章</span><h2>相机外参：c2w 与 w2c</h2><details class="chk" data-ch="6"><summary>自检…</summary></details></div>
+<p>X 光源、相机，本质上都是"空间里的一个局部坐标系"：原点在源（或相机中心），三根轴是它自己的 右 / 下 / 视线方向。描述它的 4×4 有两个方向：</p>
+<ul class="tight">
+<li><b>c2w</b>（camera-to-world）：相机坐标 → 世界坐标。和第 1 章的 [R, t] 完全一样：<b>前三列 = 相机三根轴在世界里的方向，第 4 列 = 相机在世界里的位置</b>。</li>
+<li><b>w2c</b>（world-to-camera）= c2w 的逆 = [Rᵀ, −Rᵀ·C]。渲染时真正要用的是它：把世界里的点换到相机坐标，才能做投影。</li>
+</ul>
+<p>这一章用的相机约定是 OpenCV / 3DGS / R2-Gaussian 那一套：<b class="x">x_c 朝图像右</b>，<b class="y">y_c 朝图像下</b>，<b class="z">z_c 沿视线朝前</b>。模拟的"头"在世界原点，带三个小球：<span class="legend-dot" style="background:#7048e8"></span>R 在 +x（病人右）、<span class="legend-dot" style="background:#f08c00"></span>A 在 +y（前）、<span class="legend-dot" style="background:#0c8599"></span>S 在 +z（上）。</p>
+<div class="widget">
+  <div class="stage"><div id="c6-view"></div><div class="stage-foot">黑球 = 相机（源）位置；浅色箭头 = 相机自己的三根轴；灰色框 = 成像平面；黄色小球 = 右边正在换算的那个点。</div></div>
+  <div class="panel" id="c6-panel"></div>
+</div>
+<div class="key"><b>要点</b><ul class="tight">
+<li>想知道相机<b>在哪</b>、<b>朝哪看</b>：看 c2w 的第 4 列和第 3 列，一眼就读出来。w2c 的第 4 列 −Rᵀ·C 不是相机位置，直接当位置用是常见 bug。</li>
+<li>w2c 做的事就是"<b>先减掉相机位置，再分别点乘相机的三根轴</b>"：x_c = x轴·(p − C)，y_c = y轴·(p − C)，z_c = 视线·(p − C)。z_c 就是沿视线的深度。</li>
+<li>相机绕着头转，头在世界里一动不动。所有"换视角"都只改 c2w。</li>
+</ul></div>
+<div id="c6-quiz"></div>
+</section>
+<script>
+(function () {
+  const panel = document.getElementById('c6-panel'), host = document.getElementById('c6-view');
+  const st = { az: -60, el: 20, d: 600, pt: 'R', custom: [40, -30, 60], hover: -1 };
+  const pos = () => st.pt === 'custom' ? st.custom : K.MARKERS.find(m => m.name === st.pt).c;
+  const c2wNow = () => K.lookAtCV(K.orbitPos(K.rad(st.az), K.rad(st.el), st.d));
+
+  K.slider(panel, { label: '方位角', min: -180, max: 180, value: st.az, unit: '°', oninput: x => { st.az = x; update(); } });
+  K.slider(panel, { label: '仰角', min: -70, max: 70, value: st.el, unit: '°', oninput: x => { st.el = x; update(); } });
+  K.slider(panel, { label: '到原点距离', min: 250, max: 900, value: st.d, unit: ' mm', oninput: x => { st.d = x; update(); } });
+  const sPt = K.seg(panel, { label: '换算哪个点', value: 'R', options: [{ value: 'R', label: '小球 R' }, { value: 'A', label: '小球 A' }, { value: 'S', label: '小球 S' }, { value: 'custom', label: '自己拖' }], onchange: p => { st.pt = p; update(); } });
+  ['x', 'y', 'z'].forEach((a, i) => K.slider(panel, { label: `自己拖的点 ${a}`, min: -100, max: 100, value: st.custom[i], unit: ' mm', oninput: x => { st.custom[i] = x; if (st.pt !== 'custom') sPt.set('custom', false); st.pt = 'custom'; update(); } }));
+  const read = K.h('div'); panel.append(read);
+
+  let v = null, camFr, srcBall, frus, plane, ptBall, ray, camLab;
+  K.lazy(host, () => {
+    v = K.view3d(host, { cam: [700, -950, 560], near: 1 });
+    if (!v) return;
+    K.worldAxes(v, 140, { r: 2.2 });
+    K.addPhantom(v);
+    camFr = K.frame(v, 95, { soft: true, names: ['x_c', 'y_c', 'z_c'], r: 2.6 });
+    srcBall = K.ball(v, [0, 0, 0], 9, 0x222222);
+    camLab = v.label('camera', [0, 0, 0], 'soft');
+    frus = [0, 1, 2, 3].map(() => K.line(v, [[0, 0, 0], [0, 0, 1]], 0x868e96, { opacity: 0.8 }));
+    plane = K.quad(v, 0xadb5bd, { opacity: 0.25, edge: 0x868e96 });
+    ptBall = K.ball(v, [0, 0, 0], 6, 0xfab005);
+    ray = K.line(v, [[0, 0, 0], [0, 0, 1]], 0xf08c00, { dash: 10 });
+    update();
+  });
+  K.hoverCols(read, (c, mat) => {
+    if (!mat.closest('[data-m="c2w"]') || !v) return;
+    camFr.emphasize(c < 3 ? c : -1);
+    srcBall.scale.setScalar(c === 3 ? 1.8 : 1);
+    v.req();
+  });
+
+  function update() {
+    const M = c2wNow(), Wc = K.inv(M), R = K.getR(M), C = K.getT(M), p = pos(), pc = K.hom(Wc, p), rel = K.sub(p, C);
+    if (v) {
+      camFr.set(M); srcBall.position.set(...C); camLab.set(K.add(C, [0, 0, 28]));
+      const f = 260, h = 75, corner = (sx, sy) => K.hom(M, [sx * h, sy * h, f]);
+      const cs = [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)];
+      frus.forEach((ln, i) => ln.userData.set([C, cs[i]]));
+      plane.userData.set(cs);
+      ptBall.position.set(...p); ray.userData.set([C, p]);
+      v.req();
+    }
+    const pad = x => K.fmt(x, 2);
+    read.innerHTML =
+      `<div data-m="c2w">${K.matHTML(M, { name: 'c2w（相机 → 世界）', colClass: K.AXCLS4, digits: 2, dimRow: 4, foot: '列 1–3：相机 x/y/z 轴在世界里的方向　列 4：相机位置 C' })}</div>` +
+      K.matHTML(Wc, { name: 'w2c = c2w⁻¹（世界 → 相机）', digits: 2, dimRow: 4, colClass: ['', '', '', 'ax-t'], foot: `前 3×3 = Rᵀ　列 4 = −Rᵀ·C = ${K.vec(K.getT(Wc), 1)}，<b>不是</b>相机位置` }) +
+      `<h4>把点 ${st.pt === 'custom' ? '' : st.pt + ' '}${K.vec(p, 0)} 换到相机坐标</h4><div class="eq">p − C = ${K.vec(rel, 1)}\n<span class="cx">x_c = ${K.vec(K.col(R, 0))} · (p − C) = ${pad(pc[0])}</span>　← 图像里偏右多少\n<span class="cy">y_c = ${K.vec(K.col(R, 1))} · (p − C) = ${pad(pc[1])}</span>　← 偏下多少\n<span class="cz">z_c = ${K.vec(K.col(R, 2))} · (p − C) = ${pad(pc[2])}</span>　← 深度（>0 在相机前方）</div>` +
+      `<div class="read">和 w2c·[p, 1] 的结果 ${K.vec(pc)} 完全一样：矩阵乘法就是这三次点乘。</div>`;
+  }
+  update();
+
+  K.quiz(document.getElementById('c6-quiz'), {
+    q: 'c2w = [[0, 0, −1, 500], [1, 0, 0, 0], [0, −1, 0, 0], [0, 0, 0, 1]]。相机在哪、朝哪看？',
+    options: ['在 (500, 0, 0)，朝 −x 看', '在 (0, 0, 0)，朝 +x 看', '在 (500, 0, 0)，朝 +z 看', '在 (−500, 0, 0)，朝 +x 看'], answer: 0,
+    explain: '第 4 列 (500, 0, 0) 是位置；第 3 列 (−1, 0, 0) 是视线方向 z_c，所以朝 −x 看，正对原点。这正是 R2-Gaussian 的 angle2pose 在角度 0、DSO = 500 时给出的矩阵（第 10 章）。'
+  });
+  K.addCheck(6, 'c2w · w2c = I（随机 50 个视角）', () => {
+    let m = 0;
+    for (let i = 0; i < 50; i++) { const M = K.lookAtCV(K.orbitPos(K.randIn(-3, 3), K.randIn(-1.2, 1.2), K.randIn(200, 900))); m = Math.max(m, K.maxDiff(K.mul(M, K.inv(M)), K.I(4))); }
+    return { ok: m < 1e-9, detail: `最大误差 ${m.toExponential(1)}` };
+  });
+  K.addCheck(6, 'w2c 第 4 列 = −Rᵀ·C', () => { const M = K.lookAtCV([300, -400, 200]), W = K.inv(M); return K.maxDiff(K.getT(W), K.scl(K.mv(K.T(K.getR(M)), K.getT(M)), -1)) < 1e-9; });
+  K.addCheck(6, '原点在相机正前方：相机坐标 (0, 0, 距离)', () => { const M = K.lookAtCV([300, -400, 200]), q = K.hom(K.inv(M), [0, 0, 0]); return Math.abs(q[0]) < 1e-9 && Math.abs(q[1]) < 1e-9 && Math.abs(q[2] - K.norm([300, -400, 200])) < 1e-9; });
+  K.addCheck(6, '相机坐标系是右手系（det = +1）', () => Math.abs(K.det3(K.getR(K.lookAtCV([120, 330, -250]))) - 1) < 1e-12);
+  K.addCheck(6, '小题里的矩阵 = angle2pose(DSO=500, 0°)', () => {
+    const r1 = K.Rx(-Math.PI / 2), r2 = K.Rz(Math.PI / 2), R = K.mulN(K.Rz(0), r2, r1);
+    return K.maxDiff(K.Rt(R, [500, 0, 0]), [[0, 0, -1, 500], [1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]]) < 1e-12;
+  });
+})();
+</script>
+
+<section class="ch" id="ch7">
+<div class="ch-head"><span class="ch-num">第 7 章</span><h2>投影：相机坐标 → 像素</h2><details class="chk" data-ch="7"><summary>自检…</summary></details></div>
+<p>换到相机坐标以后，X 光（锥形束）成像只剩一件事：<b>相似三角形</b>。源在原点，探测器在视线方向距离 DSD 处，一个点 (x_c, y_c, z_c) 落在探测器上的位置是</p>
+<div class="eq">u = DSD · x_c ⁄ z_c　　v = DSD · y_c ⁄ z_c　　（单位 mm，探测器中心为 0）</div>
+<p>除以 z_c 就是"近大远小"。这一步没法写成 3×3 乘法，所以才需要第 3 章说的齐次坐标：先乘矩阵，再<b>除以最后一个分量</b>。</p>
+
+<h3>① 侧面看：相似三角形</h3>
+<div class="widget">
+  <div class="stage"><div id="c7-side"></div><div class="stage-foot">左边黑点是源，右边竖线是探测器。橙色箭头是物体，虚线是经过箭头尖的那条射线。</div></div>
+  <div class="panel" id="c7-sidepanel"></div>
+</div>
+
+<h3>② 正面看：从 3D 点到像素</h3>
+<p>下面是模拟头的 DRR（每个像素 = 那条射线上密度的积分，算法在第 8 章），十字是用矩阵算出来的三个小球中心的投影。<b>十字落在亮斑正中间，就说明矩阵算对了。</b>右边对比两条算像素的路：相机内参矩阵 K，以及 R2-Gaussian 光栅化器用的投影矩阵 P → ndc → 像素。</p>
+<div class="widget">
+  <div class="stage"><div id="c7-drr" style="position:relative"></div><div class="stage-foot" id="c7-hover">鼠标移到图上看像素下标。</div></div>
+  <div class="panel" id="c7-panel"></div>
+</div>
+<div class="key"><b>要点</b><ul class="tight">
+<li><b>放大率</b> = DSD ⁄ DSO：等中心处 1 mm 的东西在探测器上是 DSD ⁄ DSO mm。离源越近的东西越大。</li>
+<li><b>mm → 像素</b>：col = u ⁄ 像素间距 + (W − 1) ⁄ 2。把这两步合在一起就是内参矩阵 K = [[DSD⁄du, 0, cx], [0, DSD⁄dv, cy], [0, 0, 1]]。</li>
+<li>R2-Gaussian 的 P 矩阵把 x_c ⁄ z_c 先缩放到 ndc ∈ [−1, 1]，再用 <code>ndc2Pix(v, S) = ((v + 1)·S − 1) ⁄ 2</code> 变成像素；那个 −1 是半像素修正，让像素中心落在整数上。两条路结果逐位相同。</li>
+<li><b>平行束</b>是 DSO → ∞ 的极限：不除以 z_c，放大率恒为 1。R2-Gaussian 平行束模式里 P 直接是单位阵。</li>
+</ul></div>
+<div id="c7-quiz"></div>
+</section>
+<script>
+(function () {
+  /* ---------- ① 侧视图 ---------- */
+  const side = { dso: 600, dsd: 1100, h: 90, par: false };
+  const sp = document.getElementById('c7-sidepanel');
+  const pl = K.plane(document.getElementById('c7-side'), { W: 640, H: 251, xr: [-80, 1450], yr: [-300, 300], grid: false });
+  const { X, Y, P } = pl, gBg = pl.layer(), gS = pl.layer();
+  for (let z = 0; z <= 1400; z += 100) K.s('line', { x1: X(z), y1: 0, x2: X(z), y2: 251, stroke: '#f1f0ec' }, gBg);
+  K.slider(sp, { label: 'DSO（物体深度）', min: 200, max: 1000, step: 10, value: side.dso, unit: ' mm', oninput: x => { side.dso = x; drawSide(); } });
+  K.slider(sp, { label: 'DSD（探测器）', min: 400, max: 1400, step: 10, value: side.dsd, unit: ' mm', oninput: x => { side.dsd = x; drawSide(); } });
+  K.slider(sp, { label: '物体高 h', min: -150, max: 150, value: side.h, unit: ' mm', oninput: x => { side.h = x; drawSide(); } });
+  K.toggle(sp, { label: '平行束', value: false, onchange: b => { side.par = b; drawSide(); } });
+  const sread = K.h('div'); sp.append(sread);
+  function drawSide() {
+    gS.replaceChildren();
+    const dso = side.dso, dsd = Math.max(side.dsd, dso + 20), h = side.h, u = side.par ? h : dsd * h / dso;
+    K.s('line', { x1: X(0), y1: Y(0), x2: X(1440), y2: Y(0), stroke: '#ced4da', 'stroke-dasharray': '5 4' }, gS);
+    if (!side.par) {
+      K.s('path', { d: `M${X(0)},${Y(0)} L${X(dsd)},${Y(0)} L${X(dsd)},${Y(u)} Z`, fill: 'rgba(28,126,214,0.08)' }, gS);
+      K.s('path', { d: `M${X(0)},${Y(0)} L${X(dso)},${Y(0)} L${X(dso)},${Y(h)} Z`, fill: 'rgba(240,140,0,0.16)' }, gS);
+      K.s('line', { x1: X(0), y1: Y(0), x2: X(dsd), y2: Y(u), stroke: K.css.acc, 'stroke-width': 1.5, 'stroke-dasharray': '6 4' }, gS);
+    } else K.s('line', { x1: X(-80), y1: Y(h), x2: X(dsd), y2: Y(u), stroke: K.css.acc, 'stroke-width': 1.5, 'stroke-dasharray': '6 4' }, gS);
+    K.s('line', { x1: X(dsd), y1: Y(-230), x2: X(dsd), y2: Y(230), stroke: K.css.ink, 'stroke-width': 4 }, gS);
+    K.s('line', { x1: X(dso), y1: Y(-230), x2: X(dso), y2: Y(230), stroke: '#adb5bd', 'stroke-dasharray': '3 4' }, gS);
+    K.arrow2(gS, P([dso, 0]), P([dso, h]), K.css.acc, { w: 3 });
+    K.s('circle', { cx: X(dsd), cy: Y(u), r: 5, fill: K.css.z }, gS);
+    if (!side.par) K.s('circle', { cx: X(0), cy: Y(0), r: 6, fill: K.css.ink }, gS);
+    K.text2(gS, X(0), Y(0) + 22, side.par ? '' : 'source', { anchor: 'middle' });
+    K.text2(gS, X(dsd) - 6, Y(-250), 'detector', { anchor: 'end' });
+    K.text2(gS, X(dso) + 6, Y(-250), 'object plane');
+    K.text2(gS, X(dsd) + 8, Y(u) + 4, `u = ${K.fmt(u, 1)}`, { color: K.css.z, bold: 1 });
+    K.text2(gS, X(dso) + 6, Y(h) - 6, `h = ${h}`, { color: '#d9480f', bold: 1 });
+    sread.innerHTML = side.par
+      ? `<div class="eq">平行束：u = h = ${K.fmt(u, 1)} mm\n放大率 = 1，和 DSO、DSD 都无关</div>`
+      : `<div class="eq">u ⁄ DSD = h ⁄ DSO\nu = DSD · h ⁄ DSO = ${dsd} × ${h} ⁄ ${dso} = ${K.fmt(u, 1)} mm\n放大率 DSD ⁄ DSO = ${K.fmt(dsd / dso, 3)}</div><span class="hint">把 DSO 拖小（物体靠近源），u 变大；把 DSD 拖大（探测器离远），u 也变大。</span>`;
+  }
+  drawSide();
+
+  /* ---------- ② DRR + 两条像素路径 ---------- */
+  const W = 96, H = 96, SIZE = 400, du = SIZE / W, dv = SIZE / H;
+  const st = { az: -90, dso: 700, dsd: 1100, par: false, mk: 'R' };
+  const box = document.getElementById('c7-drr'), panel = document.getElementById('c7-panel'), hov = document.getElementById('c7-hover');
+  const cv = K.h('canvas', { class: 'px', width: W, height: H }), ov = K.h('canvas', { width: 480, height: 480, style: 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none' });
+  box.append(cv, ov);
+  K.slider(panel, { label: '相机方位角', min: -180, max: 180, value: st.az, unit: '°', oninput: x => { st.az = x; update(); } });
+  K.slider(panel, { label: 'DSO', min: 300, max: 1200, step: 10, value: st.dso, unit: ' mm', oninput: x => { st.dso = x; update(); } });
+  K.slider(panel, { label: 'DSD', min: 500, max: 1800, step: 10, value: st.dsd, unit: ' mm', oninput: x => { st.dsd = x; update(); } });
+  K.toggle(panel, { label: '平行束', value: false, onchange: b => { st.par = b; update(); } });
+  K.seg(panel, { label: '右边详细算哪个小球', value: 'R', options: K.MARKERS.map(m => ({ value: m.name, label: m.name })), onchange: m => { st.mk = m; update(); } });
+  const read = K.h('div'); panel.append(read);
+  const cam = () => ({ c2w: K.lookAtCV(K.orbitPos(K.rad(st.az), 0, st.dso)), W, H, du, dv, dsd: Math.max(st.dsd, st.dso + 20), parallel: st.par });
+  const pixK = (c, p) => { const q = K.hom(K.inv(c.c2w), p); if (c.parallel) return { q, col: q[0] / du + (W - 1) / 2, row: q[1] / dv + (H - 1) / 2 }; const Km = [[c.dsd / du, 0, (W - 1) / 2], [0, c.dsd / dv, (H - 1) / 2], [0, 0, 1]], h = K.mv(Km, [q[0] / q[2], q[1] / q[2], 1]); return { q, Km, col: h[0], row: h[1] }; };
+  const Pmat = c => { const tx = (W * du / 2) / c.dsd, ty = (H * dv / 2) / c.dsd, zn = 0.01, zf = 100; return [[1 / tx, 0, 0, 0], [0, 1 / ty, 0, 0], [0, 0, zf / (zf - zn), -zf * zn / (zf - zn)], [0, 0, 1, 0]]; };
+  const pixP = (c, p) => { const ph = K.mv(K.mul(Pmat(c), K.inv(c.c2w)), [...p, 1]), ndc = [ph[0] / ph[3], ph[1] / ph[3]]; return { ph, ndc, col: ((ndc[0] + 1) * W - 1) / 2, row: ((ndc[1] + 1) * H - 1) / 2 }; };
+  cv.addEventListener('mousemove', e => {
+    const r = cv.getBoundingClientRect(), col = Math.floor((e.clientX - r.left) / r.width * W), row = Math.floor((e.clientY - r.top) / r.height * H);
+    if (col < 0 || row < 0 || col >= W || row >= H) return;
+    hov.textContent = `像素 (row ${row}, col ${col})　→ 探测器上 (u, v) = (${K.fmt((col - (W - 1) / 2) * du, 1)}, ${K.fmt((row - (H - 1) / 2) * dv, 1)}) mm`;
+  });
+  function update() {
+    const c = cam();
+    K.drrCV(cv, c, 0.009);
+    const g = ov.getContext('2d'); g.clearRect(0, 0, 480, 480);
+    const s = 480 / W;
+    K.MARKERS.forEach(m => {
+      const { col, row } = pixK(c, m.c), x = (col + 0.5) * s, y = (row + 0.5) * s;
+      g.strokeStyle = '#' + m.color.toString(16).padStart(6, '0'); g.lineWidth = 2.5;
+      g.beginPath(); g.moveTo(x - 14, y); g.lineTo(x + 14, y); g.moveTo(x, y - 14); g.lineTo(x, y + 14); g.stroke();
+      g.fillStyle = '#fff'; g.font = '600 15px ui-monospace,Menlo,monospace'; g.fillText(m.name, x + 9, y - 9);
+    });
+    const m = K.MARKERS.find(k => k.name === st.mk), a = pixK(c, m.c), b = c.parallel ? null : pixP(c, m.c);
+    let h = `<h4>小球 ${m.name} 中心 ${K.vec(m.c, 0)}</h4><div class="eq">相机坐标 w2c·p = ${K.vec(a.q, 1)}\n`;
+    if (c.parallel) h += `平行束：col = x_c ⁄ du + (W−1)⁄2 = ${K.fmt(a.q[0], 1)} ⁄ ${K.fmt(du, 3)} + ${(W - 1) / 2} = ${K.fmt(a.col, 3)}\n        row = y_c ⁄ dv + (H−1)⁄2 = ${K.fmt(a.row, 3)}</div>`;
+    else {
+      h += `(x_c⁄z_c, y_c⁄z_c) = ${K.vec([a.q[0] / a.q[2], a.q[1] / a.q[2]], 4)}\n探测器上 (u, v) = DSD × 上面 = ${K.vec([c.dsd * a.q[0] / a.q[2], c.dsd * a.q[1] / a.q[2]], 1)} mm</div>`;
+      h += K.matHTML(a.Km, { name: '路径 1：内参 K', digits: 2, foot: `K·(x⁄z, y⁄z, 1) → col ${K.fmt(a.col, 4)}, row ${K.fmt(a.row, 4)}` });
+      h += K.matHTML(Pmat(c), { name: '路径 2：R2-Gaussian 的 P（mode 1）', digits: 3, foot: `ndc = ${K.vec(b.ndc, 4)} → ndc2Pix → col ${K.fmt(b.col, 4)}, row ${K.fmt(b.row, 4)}` });
+      h += `<div class="read">两条路差 ${K.fmt(Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row)), 12)} 像素。</div>`;
+    }
+    read.innerHTML = h;
+  }
+  update();
+
+  K.quiz(document.getElementById('c7-quiz'), {
+    q: 'DSO = 500 mm，DSD = 1000 mm。等中心处 10 mm 长的东西，在探测器上多长？',
+    options: ['5 mm', '10 mm', '20 mm', '取决于像素间距'], answer: 2,
+    explain: '放大率 DSD ⁄ DSO = 2，所以是 20 mm。像素间距只决定它占几个像素，不改变它在探测器上的物理长度。'
+  });
+  K.addCheck(7, '内参 K 路径 = P → ndc → ndc2Pix 路径（随机 200 点）', () => {
+    let m = 0;
+    for (let i = 0; i < 200; i++) { st.az = K.randIn(-180, 180); st.dso = K.randIn(300, 1200); st.dsd = st.dso + K.randIn(50, 600); const c = cam(), p = [K.randIn(-90, 90), K.randIn(-90, 90), K.randIn(-90, 90)], a = pixK(c, p), b = pixP(c, p); m = Math.max(m, Math.abs(a.col - b.col), Math.abs(a.row - b.row)); }
+    Object.assign(st, { az: -90, dso: 700, dsd: 1100 });
+    return { ok: m < 1e-8, detail: `最大差 ${m.toExponential(1)} 像素` };
+  });
+  K.addCheck(7, '等中心平面上 h mm → 探测器上 h·DSD⁄DSO mm', () => { const c = { c2w: K.lookAtCV([0, -600, 0]), W, H, du, dv, dsd: 900 }, a = pixK(c, [30, 0, 0]); return Math.abs((a.col - (W - 1) / 2) * du - 30 * 900 / 600) < 1e-9; });
+  K.addCheck(7, 'ndc2Pix(−1) = −0.5，ndc2Pix(+1) = W − 0.5（像素中心在整数上）', () => ((-1 + 1) * W - 1) / 2 === -0.5 && ((1 + 1) * W - 1) / 2 === W - 0.5);
+  K.addCheck(7, '反投影：源 → 投影点那条射线恰好穿过小球中心', () => {
+    const c = cam(), R = K.getR(c.c2w), C = K.getT(c.c2w);
+    return K.MARKERS.every(m => { const { col, row } = pixK(c, m.c), d = K.unit(K.add(K.add(K.scl(K.col(R, 0), (col - (W - 1) / 2) * du), K.scl(K.col(R, 1), (row - (H - 1) / 2) * dv)), K.scl(K.col(R, 2), c.dsd))), oc = K.sub(m.c, C); return K.norm(K.sub(oc, K.scl(d, K.dot(oc, d)))) < 1e-6; });
+  });
+})();
+</script>
+
+<section class="ch" id="ch8">
+<div class="ch-head"><span class="ch-num">第 8 章</span><h2>反过来：像素 → 射线 → 体素</h2><details class="chk" data-ch="8"><summary>自检…</summary></details></div>
+<p>第 7 章是"点 → 像素"。DRR（包括 DiffDRR）走的是反方向：<b>对每个像素，从源画一条穿过它的射线，沿射线在体积里采样，把密度加起来</b>。这一步会把前面几章的矩阵全部用一遍：</p>
+<div class="eq">像素 (row, col) → 探测器上一点（相机坐标）→ c2w → 世界坐标 → 射线 → 采样点 → A⁻¹ → 体素下标 → 取密度 → 求和</div>
+<div class="widget">
+  <div class="stage"><div id="c8-view"></div><div class="stage-foot">灰色立方体 = 体积范围（20×20×20 个 10 mm 体素）；探测器上贴的是 DRR；橙色线是选中像素的射线，线上的点是采样点。</div></div>
+  <div class="panel" id="c8-panel"></div>
+</div>
+<div class="key"><b>要点</b><ul class="tight">
+<li>像素中心在相机坐标里是 ((col − (W−1)⁄2)·du, (row − (H−1)⁄2)·dv, DSD)，乘 c2w 就到世界里；射线方向 = 它减去源的位置再归一化。</li>
+<li>采样点的<b>下标一般不是整数</b>（A⁻¹ 算出来是 12.37 这种），所以要插值（DiffDRR 用三线性插值，也可以用 Siddon 算法精确求每个体素里的长度）。</li>
+<li>求和 Σ ρ·Δt 是线积分的近似。采样越密越接近真值；太稀时细小结构会被整个跳过。</li>
+</ul></div>
+<div id="c8-quiz"></div>
+</section>
+<script>
+(function () {
+  const panel = document.getElementById('c8-panel'), host = document.getElementById('c8-view');
+  const W = 64, H = 64, SIZE = 400, du = SIZE / W, dv = SIZE / H, DSO = 600, DSD = 1000;
+  const A = [[10, 0, 0, -95], [0, 10, 0, -95], [0, 0, 10, -95], [0, 0, 0, 1]], Ai = K.inv(A);
+  const st = { az: -60, el: 15, n: 16, pix: null, selRow: 0 };
+  const cam = () => ({ c2w: K.lookAtCV(K.orbitPos(K.rad(st.az), K.rad(st.el), DSO)), W, H, du, dv, dsd: DSD });
+  const project = (c, p) => { const q = K.hom(K.inv(c.c2w), p); return [DSD / du * q[0] / q[2] + (W - 1) / 2, DSD / dv * q[1] / q[2] + (H - 1) / 2]; };
+  const detPt = (c, col, row) => K.hom(c.c2w, [(col - (W - 1) / 2) * du, (row - (H - 1) / 2) * dv, DSD]);
+  const slab = (o, d) => { let t0 = -Infinity, t1 = Infinity; for (let i = 0; i < 3; i++) { if (Math.abs(d[i]) < 1e-12) { if (Math.abs(o[i]) > 100) return null; continue; } let a = (-100 - o[i]) / d[i], b = (100 - o[i]) / d[i]; if (a > b) [a, b] = [b, a]; t0 = Math.max(t0, a); t1 = Math.min(t1, b); } return t1 > t0 ? [t0, t1] : null; };
+  const sampleRay = (c, col, row, n) => {
+    const C = K.getT(c.c2w), P = detPt(c, col, row), d = K.unit(K.sub(P, C)), hit = slab(C, d);
+    if (!hit) return { C, P, d, hit: null };
+    const dt = (hit[1] - hit[0]) / n, pts = [];
+    for (let i = 0; i < n; i++) { const t = hit[0] + (i + 0.5) * dt, p = K.add(C, K.scl(d, t)), idx = K.hom(Ai, p); pts.push({ t, p, idx, near: idx.map(Math.round), rho: K.densityAt(p) }); }
+    return { C, P, d, hit, dt, pts, sum: pts.reduce((s, q) => s + q.rho * dt, 0), exact: K.lineIntegral(C, d) };
+  };
+
+  K.slider(panel, { label: '相机方位角', min: -180, max: 180, value: st.az, unit: '°', oninput: x => { st.az = x; st.pix = null; redraw(); } });
+  K.slider(panel, { label: '采样点数', min: 4, max: 256, value: st.n, oninput: x => { st.n = x; update(); } });
+  panel.append(K.h('div', { class: 'hint' }, '点下面的 DRR 选一个像素：'));
+  const wrap = K.h('div', { style: 'position:relative;max-width:260px' }), cv = K.h('canvas', { class: 'px', width: W, height: H, style: 'cursor:crosshair' }), ov = K.h('canvas', { width: 320, height: 320, style: 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none' });
+  wrap.append(cv, ov); panel.append(wrap);
+  const read = K.h('div'); panel.append(read);
+  cv.addEventListener('click', e => { const r = cv.getBoundingClientRect(); st.pix = [K.clamp(Math.floor((e.clientX - r.left) / r.width * W), 0, W - 1), K.clamp(Math.floor((e.clientY - r.top) / r.height * H), 0, H - 1)]; st.selRow = 0; update(); });
+
+  let v = null, det, tex, rayLn, ptsObj, voxBox, selBall, srcBall;
+  K.lazy(host, () => {
+    v = K.view3d(host, { cam: [700, -1000, 500], target: [0, 0, 0], near: 1 });
+    if (!v) return;
+    K.worldAxes(v, 130, { r: 2 });
+    K.addPhantom(v, { labels: false });
+    const vb = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(200, 200, 200)), new THREE.LineBasicMaterial({ color: 0x868e96 })); v.scene.add(vb);
+    tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
+    det = K.quad(v, 0xffffff, { map: tex, opacity: 0.95, edge: 0x333333 });
+    srcBall = K.ball(v, [0, 0, 0], 9, 0x222222);
+    rayLn = K.line(v, [[0, 0, 0], [0, 0, 1]], 0xf08c00);
+    ptsObj = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ size: 7, sizeAttenuation: false, vertexColors: true })); v.scene.add(ptsObj);
+    voxBox = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(10, 10, 10)), new THREE.LineBasicMaterial({ color: 0xe03131 })); v.scene.add(voxBox);
+    selBall = K.ball(v, [0, 0, 0], 4, 0xe03131);
+    redraw();
+  });
+
+  function redraw() {
+    const c = cam();
+    K.drrCV(cv, c, 0.009);
+    if (!st.pix) { const p = project(c, K.MARKERS[1].c); st.pix = [K.clamp(Math.round(p[0]), 0, W - 1), K.clamp(Math.round(p[1]), 0, H - 1)]; }
+    if (v) {
+      const C = K.getT(c.c2w), cs = [detPt(c, -0.5, -0.5), detPt(c, W - 0.5, -0.5), detPt(c, W - 0.5, H - 0.5), detPt(c, -0.5, H - 0.5)];
+      det.userData.set(cs); tex.needsUpdate = true; srcBall.position.set(...C);
+    }
+    update();
+  }
+  function update() {
+    const c = cam(), [col, row] = st.pix, r = sampleRay(c, col, row, st.n);
+    const g = ov.getContext('2d'), s = 320 / W; g.clearRect(0, 0, 320, 320);
+    g.strokeStyle = '#f08c00'; g.lineWidth = 2; g.strokeRect(col * s, row * s, s, s);
+    if (v) {
+      rayLn.userData.set([r.C, r.P]);
+      if (r.hit) {
+        const pos = [], col3 = [];
+        r.pts.forEach(q => { pos.push(...q.p); const on = q.rho > 0.05; col3.push(on ? 0.94 : 0.35, on ? 0.55 : 0.35, on ? 0 : 0.35); });
+        ptsObj.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        ptsObj.geometry.setAttribute('color', new THREE.Float32BufferAttribute(col3, 3));
+        ptsObj.geometry.computeBoundingSphere(); ptsObj.visible = true;
+        const q = r.pts[Math.min(st.selRow, r.pts.length - 1)];
+        voxBox.position.set(...K.hom(A, q.near)); selBall.position.set(...q.p);
+        voxBox.visible = selBall.visible = q.near.every(x => x >= 0 && x < 20);
+      } else { ptsObj.visible = voxBox.visible = selBall.visible = false; }
+      v.req();
+    }
+    let h = `<h4>像素 (row ${row}, col ${col})</h4><div class="eq">相机坐标 = ((${col} − ${(W - 1) / 2})×${K.fmt(du, 2)}, (${row} − ${(H - 1) / 2})×${K.fmt(dv, 2)}, ${DSD}) = ${K.vec([(col - (W - 1) / 2) * du, (row - (H - 1) / 2) * dv, DSD], 1)}\nc2w → 世界 ${K.vec(r.P, 1)}\n射线方向 d = unit(世界点 − 源) = ${K.vec(r.d, 3)}</div>`;
+    if (!r.hit) { read.innerHTML = h + '<div class="warn">这条射线没有穿过体积。</div>'; return; }
+    h += `<div class="read">进入体积 t = ${K.fmt(r.hit[0], 1)} mm，离开 t = ${K.fmt(r.hit[1], 1)} mm，步长 Δt = ${K.fmt(r.dt, 2)} mm</div>`;
+    h += `<div class="table-wrap" style="max-height:230px;overflow-y:auto"><table class="small"><thead><tr><th>#</th><th>t</th><th>世界 (x, y, z)</th><th>A⁻¹·p 连续下标</th><th>最近体素</th><th>ρ</th></tr></thead><tbody>` +
+      r.pts.map((q, i) => `<tr data-i="${i}" class="${i === st.selRow ? 'sel' : ''}"><td>${i}</td><td>${K.fmt(q.t, 1)}</td><td>${K.vec(q.p, 1)}</td><td>${K.vec(q.idx, 2)}</td><td>${K.vec(q.near, 0)}</td><td>${K.fmt(q.rho, 2)}</td></tr>`).join('') + '</tbody></table></div>';
+    const err = Math.abs(r.sum - r.exact) / Math.max(1e-9, r.exact);
+    h += `<div class="eq">Σ ρ·Δt = ${K.fmt(r.sum, 2)}　解析线积分 = ${K.fmt(r.exact, 2)}　相对误差 ${K.fmt(100 * err, 1)}%</div><span class="hint">点表格某一行，3D 里用红框标出那个体素。</span>`;
+    read.innerHTML = h;
+  }
+  read.addEventListener('click', e => { const tr = e.target.closest('tr[data-i]'); if (tr) { st.selRow = +tr.dataset.i; update(); } });
+  redraw();
+
+  K.quiz(document.getElementById('c8-quiz'), {
+    q: '采样点数从 8 提到 256，Σ ρ·Δt 会怎样？',
+    options: ['越来越接近解析线积分', '越来越大，没有上限', '完全不变'], answer: 0,
+    explain: 'Δt 跟着变小，求和是黎曼和，收敛到积分。把上面的"采样点数"拖来拖去看相对误差。'
+  });
+  K.addCheck(8, '采样点投影回去正好是选中像素的中心', () => {
+    const c = cam(), r = sampleRay(c, 20, 37, 32);
+    if (!r.hit) return { ok: false, detail: 'ray missed' };
+    const m = Math.max(...r.pts.map(q => { const p = project(c, q.p); return Math.max(Math.abs(p[0] - 20), Math.abs(p[1] - 37)); }));
+    return { ok: m < 1e-6, detail: `最大偏差 ${m.toExponential(1)} 像素` };
+  });
+  K.addCheck(8, '4096 个采样点时求和与解析值相差 < 1%', () => {
+    const c = cam(), p = project(c, K.MARKERS[1].c), r = sampleRay(c, p[0], p[1], 4096), e = Math.abs(r.sum - r.exact) / r.exact;
+    return { ok: e < 0.01, detail: `相对误差 ${(100 * e).toFixed(3)}%` };
+  });
+})();
+</script>
+
+<section class="ch" id="ch9">
+<div class="ch-head"><span class="ch-num">第 9 章</span><h2>C 臂（DiffDRR / GeoReg）</h2><details class="chk" data-ch="9"><summary>自检…</summary></details></div>
+<p>这一章把 DiffDRR 0.6 里真正执行的几行代码逐步复现出来（对照 DiffDRR 0.6 源码写的）。世界坐标是 RAS（x 向病人右、y 向前、z 向上），<code>read()</code> 已经把体积中心挪到原点（第 5 章的 canonicalize）。</p>
+<div class="eq">rot = [主角度, 0, 副角度]（弧度），tra = [0, SOD, 0]          ← GeoReg 用 DICOM 角度初始化的写法
+R = Rz(rot[0])·Ry(rot[1])·Rx(rot[2])                          ← euler_angles_to_matrix(…, "ZYX")
+E = [R | R·tra]                                               ← convert()：camera_center = R·tra
+pose = E · reorient                                           ← Detector.forward：reorient.compose(extrinsic)
+源 = pose·(0, 0, 0)　　像素 (row, col) = pose·(−delx·(col − (W−1)⁄2), −dely·(row − (H−1)⁄2), SDD)</div>
+<p>最后一行的两个负号来自 <code>_initialize_carm</code>：行下标 t 取反；列下标 s 在 <code>reverse_x_axis=True</code>（DRR 的默认值，注释写着"obey radiologic convention"）时也取反。</p>
+<div class="widget">
+  <div class="stage"><div id="c9-view"></div><div class="stage-foot">黑球 = 源；贴图的方框 = 探测器（贴的是这个视角的 DRR）；橙线 = 中心射线。源旁边的浅色箭头是 R 的三列。</div></div>
+  <div class="panel" id="c9-panel"></div>
+</div>
+<div class="key"><b>要点</b><ul class="tight">
+<li><b>tra = [0, SOD, 0] 是"沿相机自己的 y 轴退 SOD"</b>，不是世界里的固定位置：源 = R·tra = SOD × R 的第 2 列。LAT 和 AP 的 R 不同，同一句 tra 把源放到了完全不同的地方。</li>
+<li>不管角度怎么调：源到原点的距离恒为 SOD，中心射线恒穿过原点 → <b>世界原点就是 C 臂的旋转中心</b>，头钉在那里不动。</li>
+<li>图像方向：零位时源在 +y（前方）、探测器在后方；<b>col 增大 = 世界 −R·x̂</b>，<b>row 增大 = 世界 −R·ẑ</b>。所以零位图像的左边是病人右侧、上边是头顶（放射学看片习惯）。</li>
+<li>两台 C 臂的相对位姿由 DICOM 定死（下面"两个视角"里的夹角和源间距），头相对整套系统只有 6 个自由度。</li>
+</ul></div>
+<div id="c9-quiz"></div>
+</section>
+<script>
+(function () {
+  const panel = document.getElementById('c9-panel'), host = document.getElementById('c9-view');
+  const PRESET = {
+    LAT: { prim: -90, sec: 0.1, sod: 750.0, sdd: 1077, H: 1022, W: 1020, px: 0.2165625 },
+    AP: { prim: 2.1, sec: 35.3, sod: 757.4, sdd: 991, H: 1020, W: 1021, px: 0.2165625 },
+  };
+  const views = { LAT: Object.assign({}, PRESET.LAT), AP: Object.assign({}, PRESET.AP) };
+  const st = { cur: 'AP', both: true };
+  const REO = [[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]];
+  const geom = g => {
+    const R = K.mulN(K.Rz(K.rad(g.prim)), K.Ry(0), K.Rx(K.rad(g.sec))), tra = [0, g.sod, 0];
+    const E = K.Rt(R, K.mv(R, tra)), pose = K.mul(E, REO);
+    const delx = g.px, dely = g.px;
+    const pix = (row, col, Wn, Hn, dx, dy) => K.hom(pose, [-(dx || delx) * (col - ((Wn || g.W) - 1) / 2), -(dy || dely) * (row - ((Hn || g.H) - 1) / 2), g.sdd]);
+    return { R, tra, E, pose, src: K.hom(pose, [0, 0, 0]), detC: K.hom(pose, [0, 0, g.sdd]), pix };
+  };
+  const N64 = 64;
+  const drr = (canvas, g, G) => {
+    canvas.width = N64; canvas.height = N64;
+    const ctx = canvas.getContext('2d'), img = ctx.createImageData(N64, N64), dx = g.W * g.px / N64, dy = g.H * g.px / N64;
+    for (let r = 0; r < N64; r++) for (let c = 0; c < N64; c++) { const t = G.pix(r, c, N64, N64, dx, dy); K.putGray(img, N64, r, c, K.lineIntegral(G.src, K.unit(K.sub(t, G.src))), 0.009); }
+    ctx.putImageData(img, 0, 0);
+  };
+
+  const sv = K.seg(panel, { label: '正在调哪个视角', value: st.cur, options: [{ value: 'LAT', label: 'LAT' }, { value: 'AP', label: 'AP' }], onchange: c => { st.cur = c; syncSliders(); update(); } });
+  K.toggle(panel, { label: '同时显示两个视角', value: true, onchange: b => { st.both = b; update(); } });
+  const sl = {
+    prim: K.slider(panel, { label: '主角度 prim', min: -180, max: 180, step: 0.1, value: 0, digits: 1, unit: '°', oninput: x => { views[st.cur].prim = x; update(); } }),
+    sec: K.slider(panel, { label: '副角度 sec', min: -90, max: 90, step: 0.1, value: 0, digits: 1, unit: '°', oninput: x => { views[st.cur].sec = x; update(); } }),
+    sod: K.slider(panel, { label: 'SOD', min: 500, max: 1000, step: 0.1, value: 750, digits: 1, unit: ' mm', oninput: x => { views[st.cur].sod = x; update(); } }),
+    sdd: K.slider(panel, { label: 'SDD', min: 800, max: 1400, value: 1000, unit: ' mm', oninput: x => { views[st.cur].sdd = Math.max(x, views[st.cur].sod + 50); update(); } }),
+  };
+  const syncSliders = () => ['prim', 'sec', 'sod', 'sdd'].forEach(k => sl[k].set(views[st.cur][k], false));
+  K.button(panel, '当前视角 = 示例 DICOM 几何', () => { Object.assign(views[st.cur], PRESET[st.cur]); syncSliders(); update(); });
+  K.button(panel, '当前视角回零位（0°, 0°）', () => { views[st.cur].prim = 0; views[st.cur].sec = 0; syncSliders(); update(); });
+  const dcv = K.h('canvas', { class: 'px', style: 'max-width:220px' });
+  const read = K.h('div'), inv = K.h('div');
+  panel.append(read, K.h('h4', {}, '当前视角的 DRR（64×64 示意）'), dcv, K.h('div', { class: 'hint', id: 'c9-orient' }), inv);
+  syncSliders();
+
+  let v = null; const obj = {};
+  K.lazy(host, () => {
+    v = K.view3d(host, { cam: [1150, -1750, 1000], target: [0, 0, 60], near: 5, far: 20000 });
+    if (!v) return;
+    K.worldAxes(v, 220, { r: 4, names: ['x (R)', 'y (A)', 'z (S)'] });
+    K.addPhantom(v);
+    ['LAT', 'AP'].forEach(name => {
+      const o = obj[name] = {};
+      o.canvas = K.h('canvas');
+      o.tex = new THREE.CanvasTexture(o.canvas); o.tex.magFilter = THREE.NearestFilter;
+      o.det = K.quad(v, 0xffffff, { map: o.tex, opacity: 0.95, edge: 0x222222 });
+      o.src = K.ball(v, [0, 0, 0], 16, 0x222222);
+      o.ray = K.line(v, [[0, 0, 0], [0, 0, 1]], 0xf08c00);
+      o.fr = K.frame(v, 170, { soft: true, names: ['Rx̂', 'Rŷ', 'Rẑ'], r: 4 });
+      o.lab = v.label(name, [0, 0, 0]);
+      o.p00 = v.label('pixel (0,0)', [0, 0, 0], 'soft');
+    });
+    update();
+  });
+
+  function update() {
+    const G = { LAT: geom(views.LAT), AP: geom(views.AP) }, g = views[st.cur], C = G[st.cur];
+    drr(dcv, g, C);
+    if (v) {
+      ['LAT', 'AP'].forEach(name => {
+        const o = obj[name], gg = G[name], vw = views[name], show = st.both || name === st.cur;
+        const corners = [gg.pix(-0.5, -0.5), gg.pix(-0.5, vw.W - 0.5), gg.pix(vw.H - 0.5, vw.W - 0.5), gg.pix(vw.H - 0.5, -0.5)];
+        o.det.userData.set(corners);
+        if (show) { drr(o.canvas, vw, gg); o.tex.needsUpdate = true; }
+        o.src.position.set(...gg.src); o.ray.userData.set([gg.src, gg.detC]);
+        o.fr.set(K.Rt(gg.R, gg.src));
+        o.lab.set(K.add(gg.src, [0, 0, 60])); o.p00.set(gg.pix(0, 0));
+        [o.det, o.det.userData.edge, o.src, o.ray].forEach(m => { m.visible = show; });
+        o.fr.visible(show); o.lab.show = show; o.p00.show = name === st.cur;
+      });
+      v.req();
+    }
+    const right = K.scl(K.col(C.R, 0), -1), down = K.scl(K.col(C.R, 2), -1);
+    document.getElementById('c9-orient').innerHTML = `图像向右（col +）= 世界 ${K.vec(right, 2)}　图像向下（row +）= 世界 ${K.vec(down, 2)}`;
+    read.innerHTML =
+      `<h4>① DICOM → 参数（${st.cur}）</h4><div class="read">rot = [${K.fmt(K.rad(g.prim), 4)}, 0, ${K.fmt(K.rad(g.sec), 4)}] rad　tra = [0, ${K.fmt(g.sod, 1)}, 0]</div>` +
+      K.matHTML(C.R, { name: '② R = Rz(prim)·Rx(sec)', colClass: K.AXCLS3, digits: 3, foot: '第 2 列 = 源相对原点的方向' }) +
+      K.matHTML(C.E, { name: '③ E = [R | R·tra]', colClass: K.AXCLS4, digits: 1, dimRow: 4, foot: '第 4 列是 R·tra，不是 tra' }) +
+      K.matHTML(REO, { name: '④ reorient（AP）', digits: 0, dimRow: 4, foot: '(x, y, z) → (x, −z, y)' }) +
+      `<h4>⑤ 源和探测器</h4><div class="eq">源 = R·tra = ${K.fmt(g.sod, 1)} × ${K.vec(K.col(C.R, 1), 3)} = ${K.vec(C.src, 1)}\n探测器中心 = R·(0, SOD − SDD, 0) = ${K.vec(C.detC, 1)}\n像素 (0, 0) 中心 = ${K.vec(C.pix(0, 0), 1)}</div>`;
+    const dirL = K.unit(K.sub(G.LAT.detC, G.LAT.src)), dirA = K.unit(K.sub(G.AP.detC, G.AP.src));
+    const lineDist = gg => K.norm(K.cross(gg.src, K.unit(K.sub(gg.detC, gg.src))));
+    inv.innerHTML = `<h4>不变量（随便拖都成立）</h4><div class="eq">|源| = ${K.fmt(K.norm(C.src), 3)}　= SOD ${K.fmt(g.sod, 1)}\n原点到中心射线的距离 = ${K.fmt(lineDist(C), 6)} mm\n|源 − 探测器中心| = ${K.fmt(K.norm(K.sub(C.src, C.detC)), 3)} = SDD ${g.sdd}</div>` +
+      `<h4>两个视角之间（机器固有，由 DICOM 定）</h4><div class="eq">两条中心射线夹角 = ${K.fmt(K.deg(Math.acos(K.clamp(K.dot(dirL, dirA), -1, 1))), 2)}°\n两个源的距离 = ${K.fmt(K.norm(K.sub(G.LAT.src, G.AP.src)), 1)} mm</div>`;
+  }
+  update();
+
+  K.quiz(document.getElementById('c9-quiz'), {
+    q: 'DiffDRR 里 tra = [0, SOD, 0]，源在世界里的哪儿？',
+    options: ['永远在 (0, SOD, 0)', '在 R·(0, SOD, 0)：沿 R 的第 2 列退 SOD', '在 (0, 0, SOD)', '在 reorient·(0, SOD, 0)'], answer: 1,
+    explain: 'convert() 里 camera_center = R·translation，所以 E 的第 4 列就是 R·tra。把示例 LAT 几何调出来：R 的第 2 列 ≈ (1, 0, 0.002)，源 ≈ (750, 0, 1.3)。'
+  });
+  K.quiz(document.getElementById('c9-quiz'), {
+    q: '主、副角度都是 0 时，DRR 图像的左边是病人的哪一侧？',
+    options: ['病人右侧', '病人左侧', '头顶', '脚'], answer: 0,
+    explain: '零位 R = I，col 增大 = 世界 −x（病人左），所以 col 0（最左）在 +x（病人右）。这就是 reverse_x_axis=True 说的放射学习惯。上面回零位，看 R 小球在图的哪边。'
+  });
+  K.addCheck(9, '示例 LAT 几何：源 ≈ (750.0, 0.0, 1.3)', () => { const s = geom(PRESET.LAT).src; return { ok: K.maxDiff(s.map(x => +x.toFixed(1)), [750.0, 0.0, 1.3]) < 1e-9, detail: K.vec(s, 3) }; });
+  K.addCheck(9, '随机角度：|源| = SOD、中心射线过原点、|源 − 探测器中心| = SDD', () => {
+    let m = 0;
+    for (let i = 0; i < 100; i++) {
+      const g = { prim: K.randIn(-180, 180), sec: K.randIn(-90, 90), sod: K.randIn(500, 1000), sdd: 1300, H: 100, W: 90, px: 1 }, G = geom(g);
+      m = Math.max(m, Math.abs(K.norm(G.src) - g.sod), K.norm(K.cross(G.src, K.unit(K.sub(G.detC, G.src)))), Math.abs(K.norm(K.sub(G.src, G.detC)) - g.sdd));
+    }
+    return { ok: m < 1e-8, detail: `最大误差 ${m.toExponential(1)} mm` };
+  });
+  K.addCheck(9, '零位：像素 (0,0) 在 +x（病人右）、+z（头顶）一侧', () => { const p = geom({ prim: 0, sec: 0, sod: 750, sdd: 1000, H: 100, W: 100, px: 1 }).pix(0, 0); return p[0] > 0 && p[2] > 0; });
+  K.addCheck(9, '探测器平面垂直于中心射线', () => { const G = geom(PRESET.AP), d = K.unit(K.sub(G.detC, G.src)); return Math.abs(K.dot(K.sub(G.pix(0, 0), G.detC), d)) < 1e-9 && Math.abs(K.dot(K.sub(G.pix(900, 17), G.detC), d)) < 1e-9; });
+})();
+</script>
+
+<section class="ch" id="ch10">
+<div class="ch-head"><span class="ch-num">第 10 章</span><h2>R2-Gaussian 的相机与投影</h2><details class="chk" data-ch="10"><summary>自检…</summary></details></div>
+<p>R2-Gaussian（用 3D 高斯做 CT 重建）用的是另一套写法：C 臂只绕世界 <b>z 轴</b>转，一个角度 θ 就定下相机。下面用一个简单的 R2-Gaussian 设置举例，坐标链是：</p>
+<div class="eq">xyz_norm ∈ [−0.5, 0.5]³ × s_voxel → 世界坐标（体积中心在原点）
+θ → ang = 90° − θ → c2w = angle2pose(DSO, ang)          ← 数据集的角度定义和 angle2pose 差 90° 且方向相反时，先换算
+w2c = inv(c2w)；view = w2cᵀ；full_proj = view · Pᵀ       ← 行向量写法，给 CUDA 用
+ndc → ndc2Pix → 渲染图 → flip(-1)                       ← 渲染图和投影图左右相反时，翻转一下
+另一条路：手写投影公式"z 取反、绕 z 转 θ、除以 (DSO − y)"  ← 需要按 3D 点去 2D 图上取值时常这样写</div>
+<div class="widget">
+  <div class="stage"><div id="c10-view"></div><div class="stage-foot">虚线圆 = 源的轨道（半径 DSO，在 xy 平面）；方框 = s_voxel 大小的体积；探测器上贴的是光栅化器"翻转之前"的图（物理朝向）。</div></div>
+  <div class="panel"><div id="c10-top"></div><div class="tabs" id="c10-tabs"></div><div class="tabbody" id="c10-body"></div></div>
+</div>
+<div class="key"><b>要点</b><ul class="tight">
+<li><b>angle2pose 是外旋</b>：先绕世界 x 转 −90°（让相机 z 轴躺平），再绕 z 转 +90°，最后绕 z 转 ang；源在 DSO·(cos ang, sin ang, 0)。结果等价于"站在圆上看向原点、z 朝上"的 look-at 相机。</li>
+<li><b>"R stored transposed due to glm"</b>：CUDA 里用 glm，矩阵按列存，所以 Python 这边把 w2c 转置后传进去；平移就跑到了<b>最后一行</b>，<code>camera_center = view.inverse()[3, :3]</code> 取的也是最后一行。</li>
+<li><b>两条投影路径逐位一致</b>（本章自检用 500 个随机点验证）。三处"修正"缺一不可：渲染路径的 <code>90° − θ</code>、<code>flip(-1)</code>，和手写投影的 z 取反。下面的开关可以一个个关掉看后果。</li>
+<li><b>R2-Gaussian 的数据读取</b>会把整个场景缩放到 [−1, 1]³（scene_scale = 2 ⁄ max(sVoxel)，DSO、DSD、探测器尺寸一起乘，投影值也乘）；像素位置不变。也可以不缩放、直接用物理尺寸，本章的例子就是这样。</li>
+</ul></div>
+<div id="c10-quiz"></div>
+</section>
+<script>
+(function () {
+  const G = { nVox: 128, dVox: 1.6, nDet: 128, dDet: 3.2, DSD: 1500, DSO: 1000 };
+  const SV = G.nVox * G.dVox, SD = G.nDet * G.dDet, Wd = G.nDet, Hd = G.nDet;
+  const st = { th: 30, exs: true, flip: true, zrev: true, pt: 'R', custom: [0.2, -0.1, 0.15], tab: 'c2w', scale: false, anim: null };
+  const angle2pose = (dso, ang) => { const R = K.mulN(K.Rz(ang), K.Rz(Math.PI / 2), K.Rx(-Math.PI / 2)); return K.Rt(R, [dso * Math.cos(ang), dso * Math.sin(ang), 0]); };
+  const Pm = (fovx, fovy) => { const zn = 0.01, zf = 100; return [[1 / Math.tan(fovx / 2), 0, 0, 0], [0, 1 / Math.tan(fovy / 2), 0, 0], [0, 0, zf / (zf - zn), -zf * zn / (zf - zn)], [0, 0, 1, 0]]; };
+  const FOVX = 2 * Math.atan(SD * 0.5 / G.DSD), FOVY = 2 * Math.atan(SD * 0.5 / G.DSD);
+  const angRender = (thDeg, exs) => K.rad(exs ? 90 - thDeg : thDeg);
+  const xyzNorm = () => st.pt === 'custom' ? st.custom : K.MARKERS.find(m => m.name === st.pt).c.map(x => x / SV);
+  const pathA = (xn, thDeg, o) => {
+    const c2w = angle2pose(G.DSO, angRender(thDeg, o.exs)), w2c = K.inv(c2w), p = K.scl(xn, SV), pv = K.hom(w2c, p);
+    const ph = K.mv(K.mul(Pm(FOVX, FOVY), w2c), [...p, 1]), ndc = [ph[0] / ph[3], ph[1] / ph[3]];
+    const px = ((ndc[0] + 1) * Wd - 1) / 2, py = ((ndc[1] + 1) * Hd - 1) / 2, col = o.flip ? Wd - 1 - px : px;
+    return { c2w, w2c, p, pv, ph, ndc, px, py, col, X: (2 * col + 1) / Wd - 1, Y: (2 * py + 1) / Hd - 1 };
+  };
+  const pathB = (xn, thDeg, o) => {
+    const th = K.rad(thDeg), x = xn[0] * SV, y = xn[1] * SV, zr = (o.zrev ? -1 : 1) * xn[2] * SV;
+    const xr = x * Math.cos(th) - y * Math.sin(th), yr = x * Math.sin(th) + y * Math.cos(th), den = Math.max(G.DSO - yr, 1e-6), co = G.DSD / den;
+    return { x, y, zr, xr, yr, den, X: 2 * xr * co / SD, Y: 2 * zr * co / SD };
+  };
+
+  const top = document.getElementById('c10-top'), body = document.getElementById('c10-body'), host = document.getElementById('c10-view');
+  K.slider(top, { label: '数据集角度 θ', min: 0, max: 360, value: st.th, unit: '°', oninput: x => { st.th = x; update(); } });
+  K.button(top, '▶ 分解 angle2pose', () => play(), 'primary');
+  const cap = K.h('div', { class: 'hint' }); top.append(cap);
+  const tabs = document.getElementById('c10-tabs');
+  const tabBtns = [['c2w', 'c2w / w2c / view'], ['paths', '两条投影路径'], ['scale', '场景缩放']].map(([k, l]) => { const b = K.h('button', { type: 'button' }, l); b.onclick = () => { st.tab = k; build(); }; tabs.append(b); return [k, b]; });
+
+  let v = null, camFr, srcBall, det, tex, rayLn, texCv = K.h('canvas');
+  K.lazy(host, () => {
+    v = K.view3d(host, { cam: [1900, -2600, 1500], near: 5, far: 30000 });
+    if (!v) return;
+    K.worldAxes(v, 300, { r: 5 });
+    const circ = []; for (let i = 0; i <= 128; i++) { const a = i / 128 * 2 * Math.PI; circ.push([G.DSO * Math.cos(a), G.DSO * Math.sin(a), 0]); }
+    K.line(v, circ, 0x868e96, { dash: 30, opacity: 0.8 });
+    v.scene.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(SV, SV, SV)), new THREE.LineBasicMaterial({ color: 0x868e96 })));
+    K.addPhantom(v, { labels: false });
+    camFr = K.frame(v, 260, { soft: true, names: ['x_c', 'y_c', 'z_c'], r: 6 });
+    srcBall = K.ball(v, [0, 0, 0], 22, 0x222222);
+    tex = new THREE.CanvasTexture(texCv); tex.magFilter = THREE.NearestFilter;
+    det = K.quad(v, 0xffffff, { map: tex, opacity: 0.95, edge: 0x222222 });
+    rayLn = K.line(v, [[0, 0, 0], [0, 0, 1]], 0xf08c00);
+    update();
+  });
+
+  const drrCam = (thDeg, exs, flip, W) => ({ c2w: angle2pose(G.DSO, angRender(thDeg, exs)), W, H: W, du: SD / W, dv: SD / W, dsd: G.DSD, flipX: flip });
+  function place3d(M, showCam) {
+    if (!v) return;
+    camFr.set(M); srcBall.position.set(...K.getT(M));
+    const cam = drrCam(st.th, st.exs, false, 64);
+    const corner = (c, r) => K.hom(M, [(c - 31.5) * cam.du, (r - 31.5) * cam.dv, G.DSD]);
+    det.userData.set([corner(-0.5, -0.5), corner(63.5, -0.5), corner(63.5, 63.5), corner(-0.5, 63.5)]);
+    [det, det.userData.edge, rayLn, srcBall].forEach(o => { o.visible = showCam; });
+    rayLn.userData.set([K.getT(M), K.hom(M, [0, 0, G.DSD])]);
+    v.req();
+  }
+  function update() {
+    if (st.anim) return;
+    const M = angle2pose(G.DSO, angRender(st.th, st.exs));
+    if (v) { K.drrCV(texCv, drrCam(st.th, st.exs, false, 64), 0.006); tex.needsUpdate = true; place3d(M, true); }
+    cap.textContent = `换算：ang = 90° − θ = ${K.fmt(90 - st.th, 0)}°　源 = DSO·(cos ang, sin ang, 0) = DSO·(sin θ, cos θ, 0)`;
+    draw();
+  }
+  function play() {
+    if (!v) return;
+    const ang = angRender(st.th, st.exs), T = [0, 1, 2, 3, 4], dur = [600, 1000, 1000, 1200, 1000], t0 = performance.now();
+    const caps = ['起点：相机坐标系 = 世界坐标系，放在原点', '① R1：绕世界 x 转 −90°（z_c 躺平，指向 +y）', '② R2：绕世界 z 转 +90°（z_c 转到 −x）', `③ R3：绕世界 z 转 ang = ${K.fmt(K.deg(ang), 0)}°`, '④ 平移到 DSO·(cos ang, sin ang, 0)：z_c 正对原点'];
+    const R1 = K.Rx(-Math.PI / 2), R21 = K.mul(K.Rz(Math.PI / 2), R1), R = K.mul(K.Rz(ang), R21), tr = [G.DSO * Math.cos(ang), G.DSO * Math.sin(ang), 0];
+    const tick = now => {
+      let t = now - t0, k = 0; while (k < 4 && t > dur[k]) { t -= dur[k]; k++; }
+      const u = K.clamp(t / dur[k], 0, 1), e = u * u * (3 - 2 * u);
+      let M;
+      if (k === 0) M = K.I(4);
+      else if (k === 1) M = K.Rt(K.Rx(-Math.PI / 2 * e), [0, 0, 0]);
+      else if (k === 2) M = K.Rt(K.mul(K.Rz(Math.PI / 2 * e), R1), [0, 0, 0]);
+      else if (k === 3) M = K.Rt(K.mul(K.Rz(ang * e), R21), [0, 0, 0]);
+      else M = K.Rt(R, K.scl(tr, e));
+      place3d(M, k === 4 && u >= 1);
+      cap.textContent = caps[k];
+      if (k < 4 || u < 1) st.anim = requestAnimationFrame(tick); else { st.anim = null; setTimeout(update, 700); }
+    };
+    st.anim = requestAnimationFrame(tick);
+  }
+
+  function build() {
+    tabBtns.forEach(([k, b]) => b.classList.toggle('on', k === st.tab));
+    body.replaceChildren();
+    if (st.tab === 'paths') {
+      const sp = K.seg(body, { label: '哪个点（高斯中心）', value: st.pt, options: [...K.MARKERS.map(m => ({ value: m.name, label: '小球 ' + m.name })), { value: 'custom', label: '自己拖' }], onchange: p => { st.pt = p; draw(); } });
+      ['x', 'y', 'z'].forEach((a, i) => K.slider(body, { label: `xyz_norm ${a}`, min: -0.5, max: 0.5, step: 0.01, value: st.custom[i], digits: 2, oninput: x => { st.custom[i] = x; if (st.pt !== 'custom') sp.set('custom', false); st.pt = 'custom'; draw(); } }));
+      K.toggle(body, { label: '渲染路径用 90° − θ', value: st.exs, onchange: b => { st.exs = b; update(); } });
+      K.toggle(body, { label: '渲染路径 flip(-1)', value: st.flip, onchange: b => { st.flip = b; draw(); } });
+      K.toggle(body, { label: '手写投影 z 取反', value: st.zrev, onchange: b => { st.zrev = b; draw(); } });
+      body.append(K.h('div', { id: 'c10-cvwrap', style: 'position:relative;max-width:240px;margin:6px 0' }));
+    } else if (st.tab === 'scale') {
+      K.toggle(body, { label: '用 R2-Gaussian 数据读取里的 scene_scale', value: st.scale, onchange: b => { st.scale = b; draw(); } });
+    }
+    body.append(K.h('div', { id: 'c10-read' }));
+    draw();
+  }
+  function draw() {
+    const out = document.getElementById('c10-read'); if (!out) return;
+    const o = { exs: st.exs, flip: st.flip, zrev: st.zrev }, M = angle2pose(G.DSO, angRender(st.th, st.exs)), Wc = K.inv(M), view = K.T(Wc);
+    if (st.tab === 'c2w') {
+      const a = angRender(st.th, st.exs);
+      out.innerHTML = K.matHTML(K.Rx(-Math.PI / 2), { name: 'R1 = Rx(−90°)', digits: 0 }) + K.matHTML(K.Rz(Math.PI / 2), { name: 'R2 = Rz(90°)', digits: 0 }) + K.matHTML(K.Rz(a), { name: `R3 = Rz(${K.fmt(K.deg(a), 0)}°)`, digits: 3 }) +
+        K.matHTML(M, { name: 'c2w = [R3·R2·R1 | trans]', colClass: K.AXCLS4, digits: 2, dimRow: 4, foot: '列 3 = 视线 z_c，列 4 = 源位置' }) +
+        K.matHTML(Wc, { name: 'w2c = inv(c2w)', digits: 2, dimRow: 4 }) +
+        K.matHTML(view, { name: 'world_view_transform = w2cᵀ', digits: 2, foot: `平移跑到最后一行；inv(view)[3, :3] = ${K.vec(K.inv(view)[3].slice(0, 3), 1)} = 源位置` }) +
+        K.matHTML(Pm(FOVX, FOVY), { name: 'P（mode 1）', digits: 3, foot: `fovx = 2·atan(sDetector ⁄ 2 ⁄ DSD) = ${K.fmt(K.deg(FOVX), 2)}°；full_proj = view · Pᵀ` });
+    } else if (st.tab === 'paths') {
+      const xn = xyzNorm(), A = pathA(xn, st.th, o), B = pathB(xn, st.th, o), gap = Math.max(Math.abs(A.X - B.X), Math.abs(A.Y - B.Y));
+      out.innerHTML = `<h4>路径 A：渲染（c2w / P / ndc2Pix / flip）</h4><div class="eq">世界 = xyz_norm × ${K.fmt(SV, 1)} = ${K.vec(A.p, 1)}\nw2c·p = ${K.vec(A.pv, 1)}\nndc = ${K.vec(A.ndc, 4)}\n像素 (px, py) = ${K.vec([A.px, A.py], 2)}${st.flip ? `\nflip(-1)：col = W − 1 − px = ${K.fmt(A.col, 2)}` : ''}\ngrid 坐标 = ${K.vec([A.X, A.Y], 5)}</div>` +
+        `<h4>路径 B：手写投影公式</h4><div class="eq">(x, y, z_rev) = ${K.vec([B.x, B.y, B.zr], 1)}\n绕 z 转 θ：(xr, yr) = ${K.vec([B.xr, B.yr], 1)}\nDSO − yr = ${K.fmt(B.den, 1)}\ngrid 坐标 = 2·(xr, z_rev)·DSD ⁄ (DSO − yr) ⁄ ${K.fmt(SD, 1)} = ${K.vec([B.X, B.Y], 5)}</div>` +
+        `<div class="read">两条路径相差 <b style="color:${gap < 1e-9 ? 'var(--good)' : 'var(--bad)'}">${gap < 1e-9 ? gap.toExponential(1) : K.fmt(gap, 4)}</b>（grid 单位，[−1, 1] 对应整幅图）${gap < 1e-9 ? '' : '　← 手写投影和光栅化渲染的位置对不上了'}</div>`;
+      const wrap = document.getElementById('c10-cvwrap');
+      if (wrap) {
+        wrap.replaceChildren();
+        const cv = K.h('canvas', { class: 'px' }), ov = K.h('canvas', { width: 320, height: 320, style: 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none' });
+        wrap.append(cv, ov);
+        K.drrCV(cv, drrCam(st.th, st.exs, st.flip, 64), 0.006);
+        const g = ov.getContext('2d'), toPx = X => ((X + 1) * 320) / 2;
+        g.fillStyle = '#e03131'; g.beginPath(); g.arc(toPx(A.X), toPx(A.Y), 6, 0, 7); g.fill();
+        g.strokeStyle = '#fab005'; g.lineWidth = 3; g.beginPath(); g.arc(toPx(B.X), toPx(B.Y), 12, 0, 7); g.stroke();
+        wrap.insertAdjacentHTML('beforeend', '<div class="hint">渲染输出（含 flip）。红点 = 路径 A，黄圈 = 路径 B。</div>');
+      }
+    } else {
+      const s = st.scale ? 2 / SV : 1, xn = xyzNorm(), p = K.scl(xn, SV * s), M2 = angle2pose(G.DSO * s, angRender(st.th, st.exs));
+      const pv = K.hom(K.inv(M2), p), ndc = [pv[0] / pv[2] / Math.tan(FOVX / 2), pv[1] / pv[2] / Math.tan(FOVY / 2)];
+      const C = K.getT(M2), dir = K.unit(K.sub([0, 0, 0], C)), li0 = K.lineIntegral(K.scl(C, 1 / s), dir), li = li0 * s;
+      out.innerHTML = `<div class="table-wrap"><table class="small"><thead><tr><th style="text-align:left">扫描参数</th><th>原始</th><th>× scene_scale</th></tr></thead><tbody>` +
+        [['DSO', G.DSO], ['DSD', G.DSD], ['sVoxel', SV], ['sDetector', SD], ['dDetector', G.dDet]].map(([k, x]) => `<tr><td style="text-align:left">${k}</td><td>${K.fmt(x, 2)}</td><td>${K.fmt(x * s, 4)}</td></tr>`).join('') + '</tbody></table></div>' +
+        `<div class="eq">scene_scale = ${st.scale ? `2 ⁄ max(sVoxel) = ${K.fmt(s, 6)}` : '1（不缩放）'}\n小球 ${st.pt} 的 ndc = ${K.vec(ndc, 6)}　← 开关前后完全不变\n中心射线线积分：原始 ${K.fmt(li0, 2)} → 缩放后 ${K.fmt(li0, 2)} × ${K.fmt(s, 6)} = ${K.fmt(li, 4)}
+  ← 路径长度都乘了 scene_scale，所以投影值也要乘（dataset_readers：image × scene_scale）</div>` +
+        `<span class="hint">角度、ndc、像素位置只依赖比例，整体缩放不改变它们；线积分是长度 × 密度，长度缩了，投影值就得一起缩。</span>`;
+    }
+  }
+  build();
+
+  K.quiz(document.getElementById('c10-quiz'), {
+    q: '按 ang = 90° − θ 换算，数据集角度 θ = 0 时，源在世界里的哪儿？',
+    options: ['(DSO, 0, 0)', '(0, DSO, 0)', '(0, 0, DSO)', '(−DSO, 0, 0)'], answer: 1,
+    explain: '先换成 ang = 90° − 0 = 90°，源 = DSO·(cos 90°, sin 90°, 0) = (0, DSO, 0)。手写投影公式里除以 (DSO − y) 也说明源在 +y 一侧。'
+  });
+  const on = { exs: true, flip: true, zrev: true };
+  K.addCheck(10, '两条投影路径一致（随机 500 点 × 随机角度）', () => {
+    let m = 0;
+    for (let i = 0; i < 500; i++) { const xn = [K.randIn(-0.5, 0.5), K.randIn(-0.5, 0.5), K.randIn(-0.5, 0.5)], th = K.randIn(0, 360), a = pathA(xn, th, on), b = pathB(xn, th, on); m = Math.max(m, Math.abs(a.X - b.X), Math.abs(a.Y - b.Y)); }
+    return { ok: m < 1e-9, detail: `最大差 ${m.toExponential(1)}` };
+  });
+  K.addCheck(10, '关掉 flip、90° − θ、z 取反中任意一个，两条路径就不一致', () => {
+    const xn = [0.3, -0.2, 0.25], th = 30, d = o => { const a = pathA(xn, th, o), b = pathB(xn, th, o); return Math.max(Math.abs(a.X - b.X), Math.abs(a.Y - b.Y)); };
+    return d({ exs: true, flip: false, zrev: true }) > 0.05 && d({ exs: false, flip: true, zrev: true }) > 0.01 && d({ exs: true, flip: true, zrev: false }) > 0.05;
+  });
+  K.addCheck(10, 'inv(w2cᵀ)[3, :3] = c2w 第 4 列（camera_center）', () => { const M = angle2pose(1000, 1.1), view = K.T(K.inv(M)); return K.maxDiff(K.inv(view)[3].slice(0, 3), K.getT(M)) < 1e-9; });
+  K.addCheck(10, 'angle2pose = 站在圆上看向原点、z 朝上的 look-at 相机', () => { let m = 0; for (let i = 0; i < 50; i++) { const a = K.randIn(-3.1, 3.1); m = Math.max(m, K.maxDiff(angle2pose(800, a), K.lookAtCV([800 * Math.cos(a), 800 * Math.sin(a), 0]))); } return { ok: m < 1e-9, detail: `最大差 ${m.toExponential(1)}` }; });
+  K.addCheck(10, '整体缩放不改变 ndc', () => { const xn = [0.2, 0.1, -0.3], s = 2 / SV, f = sc => { const M = angle2pose(G.DSO * sc, 0.7), q = K.hom(K.inv(M), K.scl(xn, SV * sc)); return [q[0] / q[2], q[1] / q[2]]; }; return K.maxDiff(f(1), f(s)) < 1e-12; });
+})();
+</script>
+
+<section class="ch" id="ch11">
+<div class="ch-head"><span class="ch-num">第 11 章</span><h2>对照表与常见坑</h2><details class="chk" data-ch="11"><summary>自检…</summary></details></div>
+<h3>三套代码逐项对照</h3>
+<div class="table-wrap"><table class="cmp">
+<thead><tr><th></th><th>DiffDRR / GeoReg</th><th>R2-Gaussian（数据读取默认）</th><th>R2-Gaussian（第 10 章的例子）</th></tr></thead>
+<tbody>
+<tr><td>世界原点</td><td>体积中心（<code>read()</code> 的 canonicalize）</td><td>体积中心（offOrigin = 0 时）</td><td>体积中心（voxelize 的 center = (0, 0, 0)）</td></tr>
+<tr><td>长度单位</td><td>mm</td><td>缩放到体积落在 [−1, 1]³（scene_scale）</td><td>配置里的物理尺寸（xyz_norm × s_voxel）</td></tr>
+<tr><td>位姿怎么给</td><td>rot（ZYX 欧拉角，弧度）+ tra，6 个数</td><td>一个角度 θ，只绕 z</td><td>一个角度，先换成 90° − θ</td></tr>
+<tr><td>源的位置</td><td>R·tra = SOD × R 的第 2 列</td><td>DSO·(cos θ, sin θ, 0)</td><td>DSO·(sin θ, cos θ, 0)</td></tr>
+<tr><td>视线方向</td><td>−R·ŷ（canonical z 经 reorient 变成 −y）</td><td>相机 z_c，指向原点</td><td>同左</td></tr>
+<tr><td>矩阵写法</td><td>列向量：E·p</td><td>w2c 转置后传给 CUDA，行向量</td><td>同左</td></tr>
+<tr><td>像素方向</td><td>row + = −R·ẑ；col + = −R·x̂（<code>reverse_x_axis=True</code>）</td><td>col + = x_c，row + = y_c（ndc2Pix）</td><td>渲染完再 <code>flip(-1)</code>，col 反向</td></tr>
+<tr><td>体数据下标</td><td>torchio / nibabel：(i, j, k)</td><td>按 nVoxel、sVoxel 查询网格</td><td><code>volume_shape = (Z, Y, X)</code></td></tr>
+<tr><td>按投影点在 2D 图上取值</td><td>—</td><td>—</td><td><code>grid_sample</code>，坐标 [−1, 1]，<code>align_corners=False</code></td></tr>
+</tbody></table></div>
+
+<h3>四个最容易踩的坑（每个都能拖）</h3>
+<div class="twocol">
+  <div class="panel"><h4>① 度 vs 弧度</h4><div id="c11-rad"></div></div>
+  <div class="panel"><h4>② 行向量 vs 列向量</h4><div id="c11-row"></div></div>
+  <div class="panel"><h4>③ grid_sample 的 align_corners</h4><div id="c11-ac"></div></div>
+  <div class="panel"><h4>④ 数组下标顺序</h4><div id="c11-idx"></div></div>
+</div>
+
+<h3>最后四道题</h3>
+<div id="c11-quiz"></div>
+</section>
+<script>
+(function () {
+  /* ① 度 vs 弧度：俯视 xy 平面上的源 */
+  (function () {
+    const host = document.getElementById('c11-rad'), st = { n: 90 };
+    const pl = K.plane(host, { W: 300, H: 250, xr: [-1.4, 1.4], yr: [-1.15, 1.15], grid: false }), g = pl.layer(), { X, Y } = pl;
+    K.s('circle', { cx: X(0), cy: Y(0), r: X(1) - X(0), fill: 'none', stroke: '#ced4da', 'stroke-dasharray': '4 4' }, pl.svg);
+    K.s('circle', { cx: X(0), cy: Y(0), r: 5, fill: '#868e96' }, pl.svg);
+    const out = K.h('div', { class: 'read' });
+    K.slider(host, { label: '代码里写的数', min: 0, max: 180, value: 90, oninput: x => { st.n = x; draw(); } });
+    host.append(out);
+    function draw() {
+      g.replaceChildren();
+      const good = K.rad(st.n), bad = st.n;
+      [[good, K.css.z, 'as degrees'], [bad, K.css.x, 'read as radians']].forEach(([a, c, t], i) => {
+        const p = [Math.cos(a), Math.sin(a)];
+        K.s('line', { x1: X(0), y1: Y(0), x2: X(p[0]), y2: Y(p[1]), stroke: c, 'stroke-width': 2, 'stroke-dasharray': i ? '5 4' : '' }, g);
+        K.s('circle', { cx: X(p[0]), cy: Y(p[1]), r: 7, fill: c }, g);
+        K.text2(g, X(p[0] * 1.12), Y(p[1] * 1.12) + (i ? 14 : -4), t, { color: c, anchor: 'middle', size: 11 });
+      });
+      const wrapDeg = ((K.deg(bad) % 360) + 360) % 360;
+      out.innerHTML = `本意 ${st.n}°；被当成 ${st.n} 弧度 = ${K.fmt(K.deg(bad), 1)}°，绕圈后落在 <b style="color:var(--x)">${K.fmt(wrapDeg, 1)}°</b>。<br><span class="hint">DiffDRR 的 <code>convert(..., degrees=False)</code> 默认吃弧度；自己写相机函数时，最好在名字或注释里写明输入是度还是弧度。</span>`;
+    }
+    draw();
+  })();
+
+  /* ② 行向量 vs 列向量 */
+  (function () {
+    const host = document.getElementById('c11-row'), st = { a: 40 };
+    const pl = K.plane(host, { W: 300, H: 250, xr: [-3, 3], yr: [-2, 3], grid: true }), g = pl.layer(), { P } = pl;
+    const out = K.h('div', { class: 'read' });
+    K.slider(host, { label: '转角', min: -180, max: 180, value: 40, unit: '°', oninput: x => { st.a = x; draw(); } });
+    host.append(out);
+    function draw() {
+      g.replaceChildren();
+      const R = K.R2(K.rad(st.a));
+      const path = (f, c, dash) => K.s('path', { d: 'M' + K.F2.map(q => P(f(q)).join(',')).join(' L') + ' Z', fill: dash ? 'none' : 'rgba(28,126,214,0.15)', stroke: c, 'stroke-width': 1.8, 'stroke-dasharray': dash || '' }, g);
+      path(q => q, '#ced4da', '3 3');
+      path(q => K.mv(R, q), K.css.z);
+      path(q => K.mv(K.T(R), q), K.css.x, '6 4');
+      out.innerHTML = `蓝：R·p（列向量，逆时针转 ${st.a}°）<br>红虚线：把同一个 R 当行向量用 pᵀ·R = (Rᵀ·p)ᵀ → <b>转反了</b>。<br><span class="hint">所以 3DGS / R2-Gaussian 传给 CUDA 前要先转置：转置 + 行向量 = 原来的列向量结果。</span>`;
+    }
+    draw();
+  })();
+
+  /* ③ align_corners */
+  (function () {
+    const host = document.getElementById('c11-ac'), st = { W: 4, i: 0 };
+    const svg = K.s('svg', { viewBox: '0 0 300 150', class: 'plane' }, host);
+    const out = K.h('div', { class: 'read' });
+    const sW = K.slider(host, { label: '宽度 W（像素）', min: 2, max: 8, value: 4, oninput: x => { st.W = x; st.i = Math.min(st.i, x - 1); sI.input.max = x - 1; sI.set(st.i, false); draw(); } });
+    const sI = K.slider(host, { label: '像素下标 i', min: 0, max: 3, value: 0, oninput: x => { st.i = x; draw(); } });
+    host.append(out);
+    function draw() {
+      svg.replaceChildren();
+      const x0 = 20, x1 = 280, cw = (x1 - x0) / st.W, nx = n => x0 + (n + 1) / 2 * (x1 - x0);
+      for (let k = 0; k < st.W; k++) K.s('rect', { x: x0 + k * cw, y: 50, width: cw, height: 36, fill: k === st.i ? '#fff3bf' : '#fff', stroke: '#868e96' }, svg);
+      for (let k = 0; k < st.W; k++) { K.s('circle', { cx: x0 + (k + 0.5) * cw, cy: 68, r: 3, fill: '#495057' }, svg); K.text2(svg, x0 + (k + 0.5) * cw, 102, String(k), { anchor: 'middle', size: 11 }); }
+      const mark = (x, y, t, c) => { K.s('line', { x1: x, y1: y, x2: x, y2: 68, stroke: c, 'stroke-width': 1.5 }, svg); K.text2(svg, x, y + (y < 50 ? -4 : 14), t, { anchor: 'middle', color: c, size: 11 }); };
+      mark(nx(-1), 34, '−1 (False)', K.css.z); mark(nx(1), 34, '+1 (False)', K.css.z);
+      const cT = k => x0 + (k + 0.5) * cw;
+      mark(cT(0), 128, '−1 (True)', K.css.x); mark(cT(st.W - 1), 128, '+1 (True)', K.css.x);
+      const f = (2 * st.i + 1) / st.W - 1, t = st.W > 1 ? 2 * st.i / (st.W - 1) - 1 : 0;
+      out.innerHTML = `像素 ${st.i} 的中心：<br><span class="cz">align_corners=False → (2i+1)⁄W − 1 = ${K.fmt(f, 4)}</span>（±1 是图像外边缘）<br><span class="cx">align_corners=True → 2i⁄(W−1) − 1 = ${K.fmt(t, 4)}</span>（±1 是两端像素中心）`;
+    }
+    draw();
+  })();
+
+  /* ④ 下标顺序 */
+  (function () {
+    const host = document.getElementById('c11-idx'), st = { r: 1, c: 3, wrong: false };
+    const svg = K.s('svg', { viewBox: '0 0 300 190', class: 'plane' }, host);
+    const out = K.h('div', { class: 'read' });
+    K.slider(host, { label: 'row（第几行）', min: 0, max: 2, value: 1, oninput: x => { st.r = x; draw(); } });
+    K.slider(host, { label: 'col（第几列）', min: 0, max: 4, value: 3, oninput: x => { st.c = x; draw(); } });
+    K.toggle(host, { label: '误把 arr[row, col] 当成 arr[x, y]', value: false, onchange: b => { st.wrong = b; draw(); } });
+    host.append(out);
+    function draw() {
+      svg.replaceChildren();
+      const x0 = 40, y0 = 30, s = 44, rows = 3, cols = 5;
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
+        const inside = r < rows && c < cols, hit = r === st.r && c === st.c, bad = st.wrong && r === st.c && c === st.r;
+        K.s('rect', { x: x0 + c * s * 0.9, y: y0 + r * s * 0.62, width: s * 0.9, height: s * 0.62, fill: hit ? '#d0ebff' : bad ? '#ffe3e3' : '#fff', stroke: inside ? '#868e96' : '#f1f3f5', 'stroke-dasharray': inside ? '' : '3 3' }, svg);
+      }
+      K.text2(svg, x0 + 5 * s * 0.45, 20, 'x = col →', { anchor: 'middle', size: 11 });
+      K.text2(svg, 26, y0 + 40, 'y = row ↓', { anchor: 'middle', size: 11 }).setAttribute('transform', `rotate(-90 26 ${y0 + 40})`);
+      out.innerHTML = `图像 shape = (3, 5) = (H, W)。蓝格 <code>arr[${st.r}, ${st.c}]</code>：x = ${st.c}，y = ${st.r}。` +
+        (st.wrong ? `<br><span class="cx">当成 (x, y) 读，会去找第 ${st.c} 行第 ${st.r} 列（红格）${st.c >= 3 ? '——已经越界了' : ''}。</span>` : '') +
+        `<br><span class="hint">3D 同理：SimpleITK 数组是 (Z, Y, X)，nibabel 是 (X, Y, Z)。grid_sample 的最后一维却按 (x, y) 排。</span>`;
+    }
+    draw();
+  })();
+
+  const qz = document.getElementById('c11-quiz');
+  K.quiz(qz, { q: 'w2c 矩阵的第 4 列是相机位置吗？', options: ['是', '不是，是 −Rᵀ·C'], answer: 1, explain: '相机位置在 c2w 的第 4 列。w2c 的第 4 列是 −Rᵀ·C（第 3、6 章）。' });
+  K.quiz(qz, { q: '把 rot = [90, 0, 35]（度）直接传给 DiffDRR 的 convert()，不设 degrees=True，会怎样？', options: ['自动识别成度', '被当成弧度，角度完全错', '报错'], answer: 1, explain: 'convert 的 degrees 默认是 False，不会报错，90 被当成 90 弧度 ≈ 116.6°（绕圈后）。上面坑 ① 拖到 90 就是这个。' });
+  K.quiz(qz, { q: 'grid_sample(align_corners=False)，W = 4，第 0 个像素中心的归一化坐标是？', options: ['−1', '−0.75', '−0.5', '0'], answer: 1, explain: '(2·0 + 1) ⁄ 4 − 1 = −0.75。−1 是图像最左边缘，不是第 0 个像素的中心。' });
+  K.quiz(qz, { q: 'SimpleITK 读出来 arr.shape = (79, 512, 603)。x 方向有多少个体素？', options: ['79', '512', '603'], answer: 2, explain: 'SimpleITK 的数组是 (Z, Y, X)，最后一维才是 x。' });
+
+  K.addCheck(11, '90 弧度绕圈后 = 116.62°', () => Math.abs((((K.deg(90) % 360) + 360) % 360) - 116.62) < 0.01);
+  K.addCheck(11, 'pᵀ·R = (Rᵀ·p)ᵀ', () => { const R = K.R2(0.8), p = [1.3, -0.4], row = K.mul([p], R)[0]; return K.maxDiff(row, K.mv(K.T(R), p)) < 1e-12; });
+  K.addCheck(11, 'align_corners：False 时 i=0 → −1 + 1⁄W；True 时 i=0 → −1', () => Math.abs(((2 * 0 + 1) / 4 - 1) + 0.75) < 1e-12 && (2 * 0 / 3 - 1) === -1);
+})();
+</script>
+
+<p class="hint" style="margin-top:60px">几何约定对照的源码：DiffDRR 0.6 <code>detector.py / pose.py / data.py / drr.py</code>；R2-Gaussian <code>dataset_readers.py / graphics_utils.py / cuda_rasterizer/auxiliary.h</code>。模拟头和所有数值都是示意，不是真实数据。</p>
+</main>
+<script>
+document.querySelectorAll('.chain .node').forEach(n => { n.onclick = () => document.getElementById(n.dataset.go).scrollIntoView({ behavior: 'smooth' }); });
+K.runChecks();
+</script>
+</body>
+</html>
