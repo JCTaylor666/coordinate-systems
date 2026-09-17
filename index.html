@@ -143,7 +143,7 @@ table.small tr.sel td{background:var(--hl)} table.small tbody tr{cursor:pointer}
   <li><a href="#ch4">欧拉角：用 3 个数描述一个旋转</a><span class="st" data-ch="4"></span></li>
   <li><a href="#ch5">体素下标 ↔ 世界坐标</a><span class="st" data-ch="5"></span></li>
   <li><a href="#ch6">相机外参：一步步把局部坐标系变成相机</a><span class="st" data-ch="6"></span></li>
-  <li><a href="#ch7">投影：相机坐标 → 像素</a><span class="st" data-ch="7"></span></li>
+  <li><a href="#ch7">投影：相机坐标 → 像素（含 c2w → 像素完整数例）</a><span class="st" data-ch="7"></span></li>
   <li><a href="#ch8">反过来：像素 → 射线 → 体素</a><span class="st" data-ch="8"></span></li>
   <li><a href="#ch9">C 臂（DiffDRR / GeoReg）</a><span class="st" data-ch="9"></span></li>
   <li><a href="#ch10">R2-Gaussian 的相机与投影</a><span class="st" data-ch="10"></span></li>
@@ -1674,6 +1674,146 @@ K.orbitPos = (az, el, d) => [d * Math.cos(el) * Math.cos(az), d * Math.cos(el) *
   <div class="stage"><div id="c7-drr" style="position:relative"></div><div class="stage-foot" id="c7-hover">鼠标移到图上看像素下标。</div></div>
   <div class="panel" id="c7-panel"></div>
 </div>
+<h3>③ 从 c2w 到像素：代入数字一步步算</h3>
+<p>把前面几章串成一条完整的计算：给定扫描角 θ（R2-Gaussian 的 <code>angle2pose</code>，仰角 0）、DSO、DSD 和世界里的一个点 p，算出它落在探测器的第几行、第几列。左边俯视图（从 +z 往下看）里可以<b>拖光源</b>（改扫描角）、<b>拖点 p</b>（改它的 x、y）；右边按步骤列出每一步的数字，用"显示到第几步"一次只看前几步，俯视图也会跟着一步步把线画出来。</p>
+<div class="widget">
+  <div class="stage"><div id="c7w-top"></div><div class="stage-foot">俯视图（从 +z 往下看，单位 mm）：灰圈 = 头；虚线圆 = 光源轨道（半径 DSO）；黑点 = 光源 C（可拖）；橙点 = 点 p（可拖）；粗黑线 = 探测器；浅红 / 浅蓝箭头 = 相机的 x_c、z_c（y_c 朝下，垂直于纸面）。第 ③ 步画出 p 在 z_c、x_c 方向上的分量，第 ④ 步画出射线打到探测器的位置。</div></div>
+  <div class="panel" id="c7w-panel"></div>
+</div>
+<script>
+(function () {
+  const W = 400, H = 400, du = 1, dv = 1;
+  const EX = { th: 30, dso: 1000, dsd: 1500, p: [50, -20, 30] };
+  const st = { th: EX.th, dso: EX.dso, dsd: EX.dsd, p: EX.p.slice(), show: 6 };
+  const angle2pose = (dso, ang) => { const R = K.mulN(K.Rz(ang), K.Rz(Math.PI / 2), K.Rx(-Math.PI / 2)); return K.Rt(R, [dso * Math.cos(ang), dso * Math.sin(ang), 0]); };
+  const compute = s => {
+    const dsd = Math.max(s.dsd, s.dso + 50), c2w = angle2pose(s.dso, K.rad(s.th)), w2c = K.inv(c2w), R = K.getR(c2w), C = K.getT(c2w);
+    const rel = K.sub(s.p, C), pc = [0, 1, 2].map(i => K.dot(K.col(R, i), rel));
+    const u = dsd * pc[0] / pc[2], v = dsd * pc[1] / pc[2], col = u / du + (W - 1) / 2, row = v / dv + (H - 1) / 2;
+    const Km = [[dsd / du, 0, (W - 1) / 2], [0, dsd / dv, (H - 1) / 2], [0, 0, 1]], kq = K.mv(Km, pc);
+    const tx = (W * du / 2) / dsd, ty = (H * dv / 2) / dsd, zn = 0.01, zf = 100;
+    const P = [[1 / tx, 0, 0, 0], [0, 1 / ty, 0, 0], [0, 0, zf / (zf - zn), -zf * zn / (zf - zn)], [0, 0, 1, 0]];
+    const ph = K.mv(K.mul(P, w2c), [...s.p, 1]), ndc = [ph[0] / ph[3], ph[1] / ph[3]];
+    const dir = K.unit(K.mv(R, [(col - (W - 1) / 2) * du, (row - (H - 1) / 2) * dv, dsd]));
+    return { dsd, c2w, w2c, R, C, rel, pc, u, v, col, row, Km, kcol: kq[0] / kq[2], krow: kq[1] / kq[2], tx, ndc,
+      pcol: ((ndc[0] + 1) * W - 1) / 2, prow: ((ndc[1] + 1) * H - 1) / 2, rayDist: K.norm(K.sub(rel, K.scl(dir, K.dot(rel, dir)))), mag: dsd / pc[2] };
+  };
+
+  /* ---------- 俯视图 ---------- */
+  const pl = K.plane(document.getElementById('c7w-top'), { W: 520, H: 520, xr: [-1300, 1300], yr: [-1300, 1300], grid: false });
+  const { X, Y, P } = pl, gBg = pl.layer(), gD = pl.layer(), gH = pl.layer();
+  for (let g = -1250; g <= 1250; g += 250) { K.s('line', { x1: X(g), y1: 0, x2: X(g), y2: 520, stroke: g === 0 ? '#dee2e6' : '#f3f2ee' }, gBg); K.s('line', { x1: 0, y1: Y(g), x2: 520, y2: Y(g), stroke: g === 0 ? '#dee2e6' : '#f3f2ee' }, gBg); }
+  K.s('circle', { cx: X(0), cy: Y(0), r: X(90) - X(0), fill: 'rgba(154,152,144,0.15)', stroke: '#adb5bd' }, gBg);
+  K.arrow2(gBg, P([0, 0]), P([230, 0]), K.css.x, { w: 1.6, head: 7 }); K.text2(gBg, X(240), Y(0) + 4, 'x', { color: K.css.x, bold: 1, size: 11 });
+  K.arrow2(gBg, P([0, 0]), P([0, 230]), K.css.y, { w: 1.6, head: 7 }); K.text2(gBg, X(0) + 4, Y(245), 'y', { color: K.css.y, bold: 1, size: 11 });
+  const hC = K.s('circle', { r: 9, fill: '#222', stroke: '#fff', 'stroke-width': 2 }, gH);
+  const hP = K.s('circle', { r: 7, fill: K.css.acc, stroke: '#fff', 'stroke-width': 2 }, gH);
+  pl.drag(hC, w => { st.th = ((Math.round(K.deg(Math.atan2(w[1], w[0]))) % 360) + 360) % 360; sl.th.set(st.th, false); update(); });
+  pl.drag(hP, w => { st.p = [K.clamp(Math.round(w[0]), -100, 100), K.clamp(Math.round(w[1]), -100, 100), st.p[2]]; sl.px.set(st.p[0], false); sl.py.set(st.p[1], false); update(); });
+
+  /* ---------- 面板 ---------- */
+  const panel = document.getElementById('c7w-panel');
+  const segShow = K.seg(panel, { label: '显示到第几步', value: 6, options: [1, 2, 3, 4, 5].map(k => ({ value: k, label: '①②③④⑤'[k - 1] })).concat([{ value: 6, label: '全部 + 核对' }]), onchange: k => { st.show = k; update(); } });
+  const sl = {
+    th: K.slider(panel, { label: '扫描角 θ', min: 0, max: 359, value: st.th, unit: '°', oninput: x => { st.th = x; update(); } }),
+    dso: K.slider(panel, { label: 'DSO', min: 600, max: 1200, step: 10, value: st.dso, unit: ' mm', oninput: x => { st.dso = x; update(); } }),
+    dsd: K.slider(panel, { label: 'DSD', min: 800, max: 1800, step: 10, value: st.dsd, unit: ' mm', oninput: x => { st.dsd = x; update(); } }),
+    px: K.slider(panel, { label: '点 p 的 x', min: -100, max: 100, value: st.p[0], unit: ' mm', oninput: x => { st.p[0] = x; update(); } }),
+    py: K.slider(panel, { label: '点 p 的 y', min: -100, max: 100, value: st.p[1], unit: ' mm', oninput: x => { st.p[1] = x; update(); } }),
+    pz: K.slider(panel, { label: '点 p 的 z', min: -100, max: 100, value: st.p[2], unit: ' mm', oninput: x => { st.p[2] = x; update(); } }),
+  };
+  K.button(panel, '代入例子（θ = 30°，DSO = 1000，DSD = 1500，p = (50, −20, 30)）', () => {
+    Object.assign(st, { th: EX.th, dso: EX.dso, dsd: EX.dsd, p: EX.p.slice() });
+    sl.th.set(st.th, false); sl.dso.set(st.dso, false); sl.dsd.set(st.dsd, false); sl.px.set(st.p[0], false); sl.py.set(st.p[1], false); sl.pz.set(st.p[2], false); update();
+  });
+  panel.append(K.h('div', { class: 'hint' }, `探测器 ${W} × ${H} 像素，像素间距 ${du} mm，中心在 (${(W - 1) / 2}, ${(H - 1) / 2})。`));
+  const detWrap = K.h('div', { style: 'position:relative;max-width:230px;margin:6px 0' });
+  const detCv = K.h('canvas', { class: 'px' }), detOv = K.h('canvas', { width: 400, height: 400, style: 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none' });
+  detWrap.append(detCv, detOv); panel.append(detWrap);
+  const cards = K.h('div'); panel.append(cards);
+
+  let drrKey = '';
+  function drawTop(r) {
+    gD.replaceChildren();
+    const xc = K.col(r.R, 0), zc = K.col(r.R, 2), C = r.C;
+    K.s('circle', { cx: X(0), cy: Y(0), r: X(st.dso) - X(0), fill: 'none', stroke: '#ced4da', 'stroke-dasharray': '6 5' }, gD);
+    const Dc = K.add(C, K.scl(zc, r.dsd)), half = W * du / 2, d1 = K.add(Dc, K.scl(xc, -half)), d2 = K.add(Dc, K.scl(xc, half));
+    K.s('line', { x1: X(d1[0]), y1: Y(d1[1]), x2: X(d2[0]), y2: Y(d2[1]), stroke: '#222', 'stroke-width': 4 }, gD);
+    const dl = K.add(Dc, K.scl(zc, 90));
+    K.text2(gD, X(dl[0]), Y(dl[1]) + 4, 'detector', { anchor: 'middle', size: 11 });
+    K.s('line', { x1: X(C[0]), y1: Y(C[1]), x2: X(Dc[0]), y2: Y(Dc[1]), stroke: '#dee2e6', 'stroke-dasharray': '3 4' }, gD);
+    K.arrow2(gD, P(C.slice(0, 2)), P(K.add(C, K.scl(xc, 260)).slice(0, 2)), K.css.xs, { w: 2.6, head: 8 });
+    K.arrow2(gD, P(C.slice(0, 2)), P(K.add(C, K.scl(zc, 300)).slice(0, 2)), K.css.zs, { w: 2.6, head: 8 });
+    const lx = K.add(C, K.scl(xc, 300)), lz = K.add(C, K.scl(zc, 350));
+    K.text2(gD, X(lx[0]), Y(lx[1]), 'x_c', { color: K.css.x, bold: 1, anchor: 'middle', size: 11 });
+    K.text2(gD, X(lz[0]), Y(lz[1]), 'z_c', { color: K.css.z, bold: 1, anchor: 'middle', size: 11 });
+    K.text2(gD, X(C[0]) + 12, Y(C[1]) - 12, `C, y_c ⊗`, { size: 11 });
+    const p = st.p;
+    if (st.show >= 3) {
+      const F = K.add(C, K.scl(zc, r.pc[2]));
+      K.s('line', { x1: X(C[0]), y1: Y(C[1]), x2: X(F[0]), y2: Y(F[1]), stroke: K.css.z, 'stroke-width': 2, 'stroke-dasharray': '6 4' }, gD);
+      K.s('line', { x1: X(F[0]), y1: Y(F[1]), x2: X(p[0]), y2: Y(p[1]), stroke: K.css.x, 'stroke-width': 2, 'stroke-dasharray': '4 3' }, gD);
+      const mid = K.add(K.add(C, K.scl(zc, r.pc[2] * 0.62)), K.scl(xc, -110));
+      K.text2(gD, X(mid[0]), Y(mid[1]), `z_c = ${K.fmt(r.pc[2], 1)}`, { color: K.css.z, size: 11, anchor: 'middle' });
+    }
+    if (st.show >= 4 && r.pc[2] > 0) {
+      const hit = K.add(Dc, K.scl(xc, r.u));
+      K.s('line', { x1: X(C[0]), y1: Y(C[1]), x2: X(hit[0]), y2: Y(hit[1]), stroke: K.css.acc, 'stroke-width': 1.8 }, gD);
+      K.s('circle', { cx: X(hit[0]), cy: Y(hit[1]), r: 5, fill: K.css.acc }, gD);
+      K.text2(gD, X(hit[0]) + 8, Y(hit[1]) + 16, `u = ${K.fmt(r.u, 1)} mm`, { color: '#d9480f', bold: 1, size: 11 });
+    }
+    hC.setAttribute('cx', X(C[0])); hC.setAttribute('cy', Y(C[1]));
+    hP.setAttribute('cx', X(p[0])); hP.setAttribute('cy', Y(p[1]));
+  }
+  function drawDetector(r) {
+    const key = [st.th, st.dso, r.dsd].join(',');
+    if (key !== drrKey) { K.drrCV(detCv, { c2w: r.c2w, W: 96, H: 96, du: W * du / 96, dv: H * dv / 96, dsd: r.dsd }, 0.009); drrKey = key; }
+    const g = detOv.getContext('2d'); g.clearRect(0, 0, 400, 400);
+    g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(200, 0); g.lineTo(200, 400); g.moveTo(0, 200); g.lineTo(400, 200); g.stroke();
+    g.fillStyle = '#fff'; g.font = '600 15px ui-monospace,Menlo,monospace'; g.fillText('col →', 8, 20); g.fillText('row ↓', 8, 40);
+    if (st.show >= 4 && r.pc[2] > 0) {
+      const x = r.col + 0.5, y = r.row + 0.5;
+      g.strokeStyle = '#f08c00'; g.lineWidth = 3; g.beginPath(); g.moveTo(x - 16, y); g.lineTo(x + 16, y); g.moveTo(x, y - 16); g.lineTo(x, y + 16); g.stroke();
+      g.fillStyle = '#ffd8a8'; g.fillText(st.show >= 5 ? `(${K.fmt(r.row, 1)}, ${K.fmt(r.col, 1)})` : `(u ${K.fmt(r.u, 0)}, v ${K.fmt(r.v, 0)}) mm`, Math.min(x + 10, 250), Math.max(y - 10, 60));
+    }
+  }
+  function update() {
+    const r = compute(st), pad = x => K.fmt(x, 2), par = x => (x < 0 ? `(${K.fmt(x, 2)})` : K.fmt(x, 2)), xc = K.col(r.R, 0), yc = K.col(r.R, 1), zc = K.col(r.R, 2);
+    drawTop(r); drawDetector(r);
+    const side = (a, pos, neg) => (Math.abs(a) < 0.05 ? '居中' : a > 0 ? pos : neg);
+    const out = [];
+    out.push(`<h4>① c2w = angle2pose(DSO = ${st.dso}, θ = ${st.th}°)</h4>` + K.matHTML(r.c2w, { colClass: K.AXCLS4, digits: 3, dimRow: 4, foot: '列 1–3：x_c、y_c、z_c 在世界里的方向　列 4：光源位置 C' }) +
+      `<div class="read">光源 C = ${K.vec(r.C, 1)}；视线 z_c = ${K.vec(zc, 3)}（指向原点）；图像右 x_c = ${K.vec(xc, 3)}；图像下 y_c = ${K.vec(yc, 0)}</div>`);
+    out.push(`<h4>② w2c = c2w⁻¹ = [Rᵀ | −Rᵀ·C]</h4>` + K.matHTML(r.w2c, { digits: 3, dimRow: 4, colClass: ['', '', '', 'ax-t'], foot: `三行就是三根相机轴；平移列 ${K.vec(K.getT(r.w2c), 1)}：世界原点在相机正前方 ${K.fmt(st.dso, 0)} mm，<b>不是</b>光源位置` }));
+    out.push(`<h4>③ 换到相机坐标：先减 C，再点乘三根轴</h4><div class="eq">p − C = ${K.vec(st.p, 0)} − ${K.vec(r.C, 1)} = ${K.vec(r.rel, 2)}\n<span class="cx">x_c = ${K.vec(xc, 3)} · (p − C) = ${pad(r.pc[0])}</span>\n<span class="cy">y_c = ${K.vec(yc, 0)} · (p − C) = ${pad(r.pc[1])}</span>\n<span class="cz">z_c = ${K.vec(zc, 3)} · (p − C) = ${pad(r.pc[2])}</span></div>` +
+      `<div class="read">也就是：视线${side(r.pc[0], '右边', '左边')} ${K.fmt(Math.abs(r.pc[0]), 1)} mm、${side(r.pc[1], '下方', '上方')} ${K.fmt(Math.abs(r.pc[1]), 1)} mm，深度 ${K.fmt(r.pc[2], 1)} mm。</div>`);
+    out.push(r.pc[2] <= 0 ? '<div class="warn">点在光源后面（z_c ≤ 0），拍不到。</div>' :
+      `<h4>④ 透视：× DSD ⁄ z_c（相似三角形）</h4><div class="eq">u = DSD · x_c ⁄ z_c = ${K.fmt(r.dsd, 0)} × ${par(r.pc[0])} ⁄ ${pad(r.pc[2])} = ${pad(r.u)} mm\nv = DSD · y_c ⁄ z_c = ${K.fmt(r.dsd, 0)} × ${par(r.pc[1])} ⁄ ${pad(r.pc[2])} = ${pad(r.v)} mm\n放大率 DSD ⁄ z_c = ${K.fmt(r.mag, 3)}</div>`);
+    const inside = r.col >= -0.5 && r.col <= W - 0.5 && r.row >= -0.5 && r.row <= H - 0.5;
+    out.push(`<h4>⑤ 换成像素：÷ 像素间距 + 中心</h4><div class="eq">col = u ⁄ ${du} + ${(W - 1) / 2} = ${pad(r.col)}\nrow = v ⁄ ${dv} + ${(H - 1) / 2} = ${pad(r.row)}</div>` +
+      `<div class="read">落在像素 <b>(row ${K.fmt(r.row, 2)}, col ${K.fmt(r.col, 2)})</b>，比图像中心${side(r.col - (W - 1) / 2, '偏右', '偏左')}、${side(r.row - (H - 1) / 2, '偏下', '偏上')}${inside ? '' : '——<b style="color:var(--bad)">已经在探测器外面了</b>'}。</div>`);
+    out.push(`<h4>✔ 核对：三条路结果一样</h4>` + K.matHTML(r.Km, { name: '内参 K', digits: 1 }) +
+      `<div class="eq">K 一步到位：K·(x_c, y_c, z_c) ⁄ z_c = (${pad(r.kcol)}, ${pad(r.krow)})\nR2-Gaussian 的 P：tan(半视场) = ${K.fmt(W * du / 2, 0)} ⁄ ${K.fmt(r.dsd, 0)} = ${K.fmt(r.tx, 4)}，ndc = ${K.vec(r.ndc, 4)}\n            ndc2Pix → (${pad(r.pcol)}, ${pad(r.prow)})\n反推：从 C 穿过像素中心的射线离 p 的距离 = ${r.rayDist.toExponential(1)} mm</div>`);
+    cards.innerHTML = out.slice(0, st.show).join('');
+  }
+  update();
+
+  K.addCheck(7, '例子 θ = 30°、DSO = 1000、DSD = 1500、p = (50, −20, 30) → (row 152.950, col 133.832)', () => {
+    const r = compute({ th: 30, dso: 1000, dsd: 1500, p: [50, -20, 30] });
+    return { ok: Math.abs(r.col - 133.8324) < 1e-3 && Math.abs(r.row - 152.9498) < 1e-3, detail: `(${r.row.toFixed(4)}, ${r.col.toFixed(4)})` };
+  });
+  K.addCheck(7, '逐步算 = 内参 K = P → ndc2Pix，且射线穿过 p（随机 200 组）', () => {
+    let m = 0;
+    for (let i = 0; i < 200; i++) {
+      const r = compute({ th: K.randIn(0, 360), dso: K.randIn(600, 1200), dsd: K.randIn(1300, 1800), p: [K.randIn(-100, 100), K.randIn(-100, 100), K.randIn(-100, 100)] });
+      m = Math.max(m, Math.abs(r.col - r.kcol), Math.abs(r.row - r.krow), Math.abs(r.col - r.pcol), Math.abs(r.row - r.prow), r.rayDist);
+    }
+    return { ok: m < 1e-8, detail: `最大差 ${m.toExponential(1)}` };
+  });
+  K.addCheck(7, 'w2c 的平移列 = (0, 0, DSO)：原点在相机正前方 DSO 处', () => { const r = compute({ th: 77, dso: 950, dsd: 1400, p: [0, 0, 0] }); return K.maxDiff(K.getT(r.w2c), [0, 0, 950]) < 1e-9; });
+})();
+</script>
+
 <div class="key"><b>要点</b><ul class="tight">
 <li><b>放大率</b> = DSD ⁄ DSO：等中心处 1 mm 的东西在探测器上是 DSD ⁄ DSO mm。离源越近的东西越大。</li>
 <li><b>mm → 像素</b>：col = u ⁄ 像素间距 + (W − 1) ⁄ 2。把这两步合在一起就是内参矩阵 K = [[DSD⁄du, 0, cx], [0, DSD⁄dv, cy], [0, 0, 1]]。</li>
